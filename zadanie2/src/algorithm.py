@@ -1,15 +1,16 @@
-from typing import Callable
+from collections.abc import Callable
 
 
 class Algorithm:
-    init_temp: float
-    alpha: float
+    init_temp: int
+    alpha: Callable[[float], float]
     iter_num: int
     k_coef: float
-    func: Callable[[..., float], float]
+    func: Callable[..., float]
 
-    def __init__(self, init_temp: float, alpha: float, iter_num: int,
-                 k_coef: float, func: Callable[[..., float], float]):
+    def __init__(self, init_temp: int, alpha: Callable[[float], float],
+                 iter_num: int, k_coef: float,
+                 func: Callable[..., float]):
         self.init_temp = init_temp
         self.alpha = alpha
         self.iter_num = iter_num
@@ -21,7 +22,7 @@ class Algorithm:
         # temp: float = self.init_temp
         while not stop_condition:
             for i in range(self.iter_num):
-                pass
+                print(f"iter {i}")
                 # TODO ???
                 # wyznaczenie losowo sąsiedniego rozwiązania s’∈
                 # N(s)
@@ -34,5 +35,6 @@ class Algorithm:
                 #     if x < math.exp(-delta / (k_coef * temp)):
                 #         s = s_prim
                 #
-                # TODO ???
-                # T = α(T)
+                # temp = alpha(temp)
+
+            stop_condition = True
