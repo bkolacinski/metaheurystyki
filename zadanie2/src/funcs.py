@@ -1,10 +1,14 @@
 from math import sin, pi
 
 
+def example_1(x: float) -> float:
+    return 3 * sin(pi * x / 5) + sin(pi * x)
+
+
 def func_section_3(x: float) -> float:
-    if x > -105 and x < -95:
+    if -105 < x < -95:
         return 10 - 2 * abs(x + 100)
-    elif x > 95 and x < 105:
+    elif 95 < x < 105:
         return 11 - 2.2 * abs(x - 100)
     return 0
 
