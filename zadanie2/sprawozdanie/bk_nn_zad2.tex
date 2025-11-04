@@ -7,7 +7,36 @@
 \usepackage{tocloft}
 \usepackage{amsmath}
 \usepackage{graphicx}
+\usepackage{listings}
+\usepackage{xcolor}
 \usepackage{hyperref}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2
+}
+
+\lstset{style=mystyle}
+\renewcommand{\lstlistingname}{Kod}
 
 \hypersetup{
     colorlinks=true,
@@ -35,7 +64,7 @@
         \begin{tabular}{|l|r|}
             \hline
             \textbf{Użyte technologie: } & Python 3.13\\ \hline
-            \textbf{Użyte biblioteki: } & \parbox[t]{3cm}{\raggedleft math\\numpy\\random\\collections.abc\\matplotlib.pyplot}\\ \hline
+            \textbf{Użyte biblioteki: } & \parbox[t]{3cm}{\raggedleft time\\math\\numpy\\random\\collections.abc\\matplotlib.pyplot}\\ \hline
         \end{tabular}
     \end{center}
     \vspace{1cm}
@@ -43,6 +72,31 @@
     \newpage
 
     \tableofcontents
+
+    \newpage
+    \section{Opis zasad działania algorytmu}
+    \subsection{Opis algorytmu symulowanego wyżarzania}
+
+    \subsection{Opis implementacji rozwiązania}
+
+    Cała logika algorytmu symulowanego wyżarzania została zaimplementowana w klasie\\\texttt{SimulatedAnnealing}.
+    \texttt{self.func} to funkcja której maksimum chcemy znaleźć, \texttt{self.domain} to obszar w którym szukamy maksimum, a \texttt{self.dimensions} to liczba wymiarów problemu optymalizacyjnego.
+
+    \begin{lstlisting}[language=Python, caption={Inicjalizacja klasy SimulatedAnnealing}]
+    class SimulatedAnnealing:
+        def __init__(self,
+                 func: Callable,
+                 domain: tuple[float, float] | list[tuple[float, float]]):
+        self.func = func
+        if isinstance(domain, tuple) and len(domain) == 2 and isinstance(
+                domain[0], (int, float)):
+            self.domain = [domain]
+        else:
+            self.domain = domain
+        self.dimensions = len(self.domain)
+    \end{lstlisting}
+    \subsection{Opis uruchomienia programu}
+    
 
     \newpage
     \section{Odtworzenie eksperymentów z artykułu}
@@ -67,7 +121,9 @@
         \label{fig:wykres_sekcja_3}
     \end{figure}
 
-    Znalezione przez nas maksimum lokalne funkcji \(f(x)\) to \(f(100.07) = 10.84\) (rysunek \ref{fig:wykres_sekcja_3}), co różni się od maksimum globalnego o \(\delta=|10.84-11|=0.16\).
+    Wybrana funkcja posiada dwa ekstrema lokalne - \(f(-100) = 10\) oraz \(f(100) = 11\). Funkcja poza okolicami tych ekstremów przyjmuje wartość \(0\). Jej maksimum globalne to \(f(100) = 11\).
+
+    Znalezione przez nas maksimum funkcji \(f(x)\) to \(f(100.07) = 10.84\) (rysunek \ref{fig:wykres_sekcja_3}), co różni się od maksimum globalnego o \(\delta=|10.84-11|=0.16\).
 
     \newpage
     \subsection{Wybrana funkcja z rozdziału 4}
@@ -86,7 +142,9 @@
         \label{fig:wykres_sekcja_4}
     \end{figure}
 
-    Znalezione przez nas maksimum lokalne funkcji \(f(x,y)\) to \(f(11.12,5.62) = 38.20\) (rysunek \ref{fig:wykres_sekcja_4}), co różni się od maksimum globalnego o \(\delta=|38.20-38.85|=0.65\).
+    Wybrana funkcja posiada bardzo dużo ekstremów lokalnych w określonym obszarze. Jej maksimum globalne to \(f(12,5.7) = 38.85\).
+
+    Znalezione przez nas maksimum funkcji \(f(x,y)\) to \(f(11.12,5.62) = 38.20\) (rysunek \ref{fig:wykres_sekcja_4}), co różni się od maksimum globalnego o \(\delta=|38.20-38.85|=0.65\).
 
 
 
