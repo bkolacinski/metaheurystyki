@@ -2,6 +2,8 @@ from collections.abc import Callable
 from math import exp
 from random import uniform
 
+from funcs import timer
+
 
 class SimulatedAnnealing:
     def __init__(self,
@@ -15,6 +17,7 @@ class SimulatedAnnealing:
             self.domain = domain
         self.dimensions = len(self.domain)
 
+    @timer
     def run_epochs(self,
                    epochs: int,
                    attempts_per_epoch: int,

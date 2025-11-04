@@ -1,8 +1,15 @@
 from math import sin, pi
+from time import perf_counter
 
 
-def example_1(x: float) -> float:
-    return 3 * sin(pi * x / 5) + sin(pi * x)
+def timer(func):
+    def wrapper(*args, **kwargs):
+        start_time = perf_counter()
+        result = func(*args, **kwargs)
+        end_time = perf_counter()
+        return result, (end_time - start_time) * 1000  # time in milliseconds
+
+    return wrapper
 
 
 def func_section_3(x: float) -> float:

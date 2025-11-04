@@ -1,0 +1,7 @@
+sprawozdanie/*
+sprawozdanie/figures/**
+
+!sprawozdanie/bk_nn_zad2.tex
+!sprawozdanie/bk_nn_zad2.pdf
+!sprawozdanie/figures/
+!sprawozdanie/figures/.gitkeep

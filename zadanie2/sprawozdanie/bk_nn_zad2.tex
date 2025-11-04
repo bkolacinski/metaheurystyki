@@ -1,0 +1,72 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[polish]{babel}
+\usepackage[a4paper, margin=3cm]{geometry}
+\usepackage{array}
+\usepackage{tocloft}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{hyperref}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=black,
+    urlcolor=blue
+}
+
+\renewcommand{\cftsecleader}{\cftdotfill{\cftdotsep}}
+
+\begin{document}
+    \title{Metaheurystyki --- zadanie 2 \\
+    \large Algorytm symulowanego wyżarzania}
+    \date{\today}
+    \author{
+        Bartosz Kołaciński \\
+        251554
+        \and
+        Nikodem Nowak \\
+        ??????
+    }
+    \maketitle
+
+    \vfill
+    \begin{center}
+        \begin{tabular}{|l|r|}
+            \hline
+            \textbf{Użyte technologie: } & Python 3.13\\ \hline
+            \textbf{Użyte biblioteki: } & \parbox[t]{3cm}{\raggedleft math\\numpy\\random\\collections.abc\\matplotlib.pyplot}\\ \hline
+        \end{tabular}
+    \end{center}
+    \vspace{1cm}
+
+    \newpage
+
+    \tableofcontents
+
+    \newpage
+    \section{Odtworzenie eksperymentów z artykułu}
+    \subsection{Wybrana funkcja z rozdziału 3}
+
+    \vspace{1em}
+    Z sekcji 3 wybraliśmy funkcję \(f(x)\) z przykładu 1, określoną w przedziale \([-150, 150]\), wyrażoną wzorem:
+    \[
+    f(x) =
+    \begin{cases}
+        -2|x+100|+10 \text{ dla } x\in(-105,-95) \\
+        -2.2|x-100|+11 \text{ dla } x\in(95,105) \\
+        0 \text{ dla } x\notin(-105,-95)\cup(95,105)
+    \end{cases}
+    \]
+    \vspace{-1.75em}
+    \begin{figure}[h!]
+        \centering
+        \includegraphics[width=0.8\textwidth]{figures/func_section_3.png}
+        \caption{Wykres funkcji \(f(x)\) w przedziale \([-150, 150]\)}
+        \label{fig:wykres_fx}
+    \end{figure}
+
+
+
+
+\end{document}
