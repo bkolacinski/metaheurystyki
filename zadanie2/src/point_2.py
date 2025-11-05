@@ -8,7 +8,7 @@ def main():
         func=func_section_3,
         domain=(-150, 150)
     )
-    (point, value), _ = annealing_section_3.run_epochs(
+    (point, value, best_iters), _ = annealing_section_3.run_epochs(
         epochs=5000,
         attempts_per_epoch=1,
         init_temp=500.0,
@@ -26,7 +26,7 @@ def main():
         func=func_section_4,
         domain=[(-3, 12), (4.1, 5.8)]
     )
-    (point, value), _ = annealing_section_4.run_epochs(
+    (point, value, best_iters), _ = annealing_section_4.run_epochs(
         epochs=7000,
         attempts_per_epoch=1,
         init_temp=100.0,

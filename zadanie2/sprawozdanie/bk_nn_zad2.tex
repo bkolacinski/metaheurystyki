@@ -134,7 +134,8 @@
     określoną liczbę prób w każdej epoce. W każdej próbie generowany jest nowy punkt poprzez wybranie go z losowego sąsiedztwa aktualnie najlepszego punktu, z 
     uwzględnieniem bieżącej temperatury. Wartość funkcji w nowym punkcie jest obliczana i porównywana z najlepszą dotychczasową wartością. Jeśli nowa wartość jest 
     lepsza, to staje się nowym najlepszym punktem. Jeśli jest gorsza, to istnieje prawdopodobieństwo akceptacji tego gorszego rozwiązania, które zależy od różnicy 
-    wartości funkcji oraz bieżącej temperatury. Na koniec każdej epoki temperatura jest schładzana za pomocą funkcji \texttt{alpha}.
+    wartości funkcji oraz bieżącej temperatury. Na koniec każdej epoki temperatura jest schładzana za pomocą funkcji \texttt{alpha}. Jeżeli wartość temperatury
+    spadnie poniżej bardzo małej wartości (1e-10), pętla zostaje przerwana.
 
     \begin{lstlisting}[language=Python, caption={Główna pętla algorytmu symulowanego wyżarzania}]
     for _ in range(epochs):
@@ -157,6 +158,8 @@
                     best_point, best_f_value = new_point, f_value
 
         temp = alpha(temp)
+        if temp < 1e-10:
+            break
 
     return best_point, best_f_value
     \end{lstlisting}
@@ -189,7 +192,7 @@
 
     Wybrana funkcja posiada dwa ekstrema lokalne - \(f(-100) = 10\) oraz \(f(100) = 11\). Funkcja poza okolicami tych ekstremów przyjmuje wartość \(0\). Jej maksimum globalne to \(f(100) = 11\).
 
-    Znalezione przez nas maksimum funkcji \(f(x)\) to \(f(100.07) = 10.84\) (rysunek \ref{fig:wykres_sekcja_3}), co różni się od maksimum globalnego o \(\delta=|10.84-11|=0.16\).
+    Znalezione przez nas maksimum funkcji \(f(x)\) to \(f(100.27) = 10.40\) (rysunek \ref{fig:wykres_sekcja_3}), co różni się od maksimum globalnego o \(\delta=|10.84-11|=0.16\).
 
     \newpage
     \subsection{Wybrana funkcja z rozdziału 4}

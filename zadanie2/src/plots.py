@@ -2,14 +2,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from funcs import *
-from zadanie2.src.algorithm import SimulatedAnnealing
+from algorithm import SimulatedAnnealing
 
 
 def draw_plot_section_3():
     x = np.linspace(-150, 150, 3000)
     y = [func_section_3(xi) for xi in x]
 
-    (point, value), _ = SimulatedAnnealing(
+    (point, value, best_iters), _ = SimulatedAnnealing(
         func=func_section_3,
         domain=(-150, 150)
     ).run_epochs(
@@ -22,9 +22,9 @@ def draw_plot_section_3():
 
     plt.plot(x, y)
     plt.scatter(point[0], value, color='red', zorder=10, alpha=0.5,
-                label=f'Found maximum at x=100, f(x)=11')
+                label=f'Global maximum at x=100, f(x)=11')
     plt.scatter(100, 11, color='purple', zorder=10, alpha=0.5,
-                label=f'Global maximum at x={point[0]:.2f}, f(x)={value:.2f}')
+                label=f'Found maximum at x={point[0]:.2f}, f(x)={value:.2f}')
     plt.xlabel('x')
     plt.ylabel('f(x)')
     plt.legend()
@@ -41,7 +41,7 @@ def draw_plot_section_4():
     zz = np.array([[func_section_4(xi, yi) for xi, yi in zip(x_row, y_row)]
                   for x_row, y_row in zip(xx, yy)])
 
-    (point, value), _ = SimulatedAnnealing(
+    (point, value, best_iters), _ = SimulatedAnnealing(
         func=func_section_4,
         domain=[(-3, 12), (4.1, 5.8)]
     ).run_epochs(
