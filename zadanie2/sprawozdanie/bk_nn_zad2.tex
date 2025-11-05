@@ -85,6 +85,13 @@
     \section{Opis zasad działania algorytmu}
     \subsection{Opis algorytmu symulowanego wyżarzania}
 
+    Algorytm symulowanego wyżarzania to metaheurystyka inspirowana procesem fizycznym wyżarzania metali.
+    Celem algorytmu jest znalezienie przybliżonego ekstremum danej funkcji.
+    Algorytm rozpoczyna się od losowego rozwiązania początkowego i iteracyjnie poszukuje lepszych rozwiązań poprzez generowanie nowych kandydatów w sąsiedztwie aktualnego rozwiązania.
+    W każdej iteracji, jeśli nowe rozwiązanie jest lepsze od aktualnego, zostaje zaakceptowane jako nowe rozwiązanie.
+    Jeśli jest gorsze, może zostać zaakceptowane z pewnym prawdopodobieństwem, które zależy od różnicy jakości rozwiązań oraz bieżącej temperatury i współczynnika \(k\).
+    Temperatura jest stopniowo obniżana w trakcie działania algorytmu, co zmniejsza prawdopodobieństwo akceptacji gorszych rozwiązań oraz zmniejsza obszar poszukiwań.
+
     \subsection{Opis implementacji rozwiązania}
 
     Cała logika algorytmu symulowanego wyżarzania została zaimplementowana w klasie\\\texttt{SimulatedAnnealing}.
@@ -94,14 +101,7 @@
     class SimulatedAnnealing:
         def __init__(self,
                  func: Callable,
-                 domain: tuple[float, float] | list[tuple[float, float]]):
-        self.func = func
-        if isinstance(domain, tuple) and len(domain) == 2 and isinstance(
-                domain[0], (int, float)):
-            self.domain = [domain]
-        else:
-            self.domain = domain
-        self.dimensions = len(self.domain)
+                 domain: tuple[float, float] | list[tuple[float, float]])
     \end{lstlisting}
 
     Metoda \texttt{run\_epochs} klasy \texttt{SimulatedAnnealing} odpowiada za przeprowadzenie określonej liczby epok algorytmu symulowanego wyżarzania. 
@@ -116,7 +116,7 @@
                    k: float) -> tuple[list[float], float]:
     \end{lstlisting}
 
-    Na początku metody \texttt{run\_epochs} zajmujemy się inicjalizacją dwóch wartości.
+    Na początku metody \texttt{run\_epochs} zajmujemy się inicjalizacją wartości.
     Początkowy punkt (nieograniczony do jednego wymiaru) jest wybierany losowo z podanego przedziału lub obszaru określonego przez \texttt{self.domain}. 
     Wartość funkcji w tym punkcie jest obliczana i przechowywana jako \texttt{best\_f\_value}. Temperatura jest inicjalizowana wartością \texttt{init\_temp}.
 
@@ -129,39 +129,30 @@
 
     \newpage
 
-    W dalszej części metody \texttt{run\_epochs} znajduje się główna pętla algorytmu symulowanego wyżarzania.
-    Główna pętla algorytmu (ta z warunkiem stopu) składa się z dwóch zagnieżdżonych pętli: zewnętrznej, która iteruje przez określoną liczbę epok, oraz wewnętrznej, która wykonuje 
-    określoną liczbę prób w każdej epoce. W każdej próbie generowany jest nowy punkt poprzez wybranie go z losowego sąsiedztwa aktualnie najlepszego punktu, z 
-    uwzględnieniem bieżącej temperatury. Wartość funkcji w nowym punkcie jest obliczana i porównywana z najlepszą dotychczasową wartością. Jeśli nowa wartość jest 
-    lepsza, to staje się nowym najlepszym punktem. Jeśli jest gorsza, to istnieje prawdopodobieństwo akceptacji tego gorszego rozwiązania, które zależy od różnicy 
-    wartości funkcji oraz bieżącej temperatury. Na koniec każdej epoki temperatura jest schładzana za pomocą funkcji \texttt{alpha}. Jeżeli wartość temperatury
-    spadnie poniżej bardzo małej wartości (1e-10), pętla zostaje przerwana.
+    Fragment tworzy nowy punkt będący kandydatem do bycia nowym najlepszym punktem.
+    Pętla losuje współrzędną z sąsiedztwa najlepszego rozwiązania,
+    ogranicza ją do wcześniej podanej dziedziny lub obszaru i dodaje do \texttt{new\_point}.
+    Dzięki zależności zakresu losowania od temperatury algorytm przy wysokiej temperaturze eksploruje dalej,
+    a przy niskiej koncentruje się wokół bieżącego najlepszego rozwiązania.
 
     \begin{lstlisting}[language=Python, caption={Główna pętla algorytmu symulowanego wyżarzania}]
-    for _ in range(epochs):
-        for _ in range(attempts_per_epoch):
-            new_point = []
-            for i in range(self.dimensions):
-                left, right = self.domain[i]
-                new_coord = uniform(best_point[i] - 2 * temp,
-                                    best_point[i] + 2 * temp)
-                new_coord = max(left, min(new_coord, right))
-                new_point.append(new_coord)
+    new_point = []
+    for i in range(self.dimensions):
+        left, right = self.domain[i]
+        new_coord = uniform(best_point[i] - 2 * temp,
+                            best_point[i] + 2 * temp)
+        new_coord = max(left, min(new_coord, right))
+        new_point.append(new_coord)
+    \end{lstlisting}
 
-            f_value = self.func(*new_point)
+    Gorsze rozwiązanie zostaje zaakceptowane gdy zajdzie warunek \( e^{\frac{f(x') - f(x)}{kT}} > p \), gdzie \(p\) to losowa liczba z przedziału \([0, 1]\),
+    \(f(x')\) to wartość funkcji w nowym punkcie, \(f(x)\) to wartość funkcji w najlepszym dotychczasowym punkcie, \(k\) to współczynnik wpływający na prawdopodobieństwo
+    akceptacji gorszych rozwiązań, a \(T\) to bieżąca temperatura.
 
-            if f_value > best_f_value:
-                best_point, best_f_value = new_point, f_value
-            else:
-                p = uniform(0, 1)
-                if exp((f_value - best_f_value) / (k * temp)) > p:
-                    best_point, best_f_value = new_point, f_value
-
-        temp = alpha(temp)
-        if temp < 1e-10:
-            break
-
-    return best_point, best_f_value
+    \begin{lstlisting}[language=Python, caption={Główna pętla algorytmu symulowanego wyżarzania}]
+    p = uniform(0, 1)
+    if exp((f_value - best_f_value) / (k * temp)) > p:
+        best_point, best_f_value = new_point, f_value
     \end{lstlisting}
 
     \subsection{Opis uruchomienia programu}
@@ -216,6 +207,47 @@
     Znalezione przez nas maksimum funkcji \(f(x,y)\) to \(f(11.12,5.62) = 38.20\) (rysunek \ref{fig:wykres_sekcja_4}), co różni się od maksimum globalnego o \(\delta=|38.20-38.85|=0.65\).
 
     \newpage
+
+    \subsection{Analiza wpływu parametrów algorytmu na jakość rozwiązania}
+
+    \subsubsection{Analiza wpływu temperatury na jakość rozwiązania}
+
+    Wartość temperatury początkowej ma istotny wpływ na dokładność rozwiązania (co widać na rysunku \ref{fig:alpha_analiza}), ale nie ma wpływu na czas trwania algorytmu ani na liczbę iteracji.
+
+    \begin{figure}[h!]
+        \centering
+        \includegraphics[width=0.8\textwidth]{figures/temperature_overview.png}
+        \caption{Zależności pomiędzy wartością temperatury początkowej a czasem, ilością iteracji oraz jakością rozwiązania}
+        \label{fig:temperatura_analiza}
+    \end{figure}
+
+    \newpage
+
+    \subsubsection{Analiza wpływu alpha na jakość rozwiązania}
+
+    Wartość współczynnika \(\alpha\) ma istotny wpływ na wszystkie trzy badane aspekty: czas trwania algorytmu, liczbę iteracji oraz dokładność rozwiązania (co widać na rysunku \ref{fig:alpha_analiza}).
+    Wykres zależności pomiędzy wartością \(\alpha\) a czasem oraz liczbą iteracji przyjmują charakterystyczny kształt ze względu na drugi warunek stopu, którym jest osiągnięcie niskiej wartości temperatury.
+
+    \begin{figure}[h!]
+        \centering
+        \includegraphics[width=0.8\textwidth]{figures/alpha_overview.png}
+        \caption{Zależności pomiędzy wartością współczynnika \(\alpha\) a czasem, ilością iteracji oraz jakością rozwiązania}
+        \label{fig:alpha_analiza}
+    \end{figure}
+
+    \newpage
+
+    \subsubsection{Analiza wpływu liczby epok na jakość rozwiązania}
+
+    Liczba epok wpływa na wszystkie trzy badane aspekty: czas trwania algorytmu, liczbę iteracji oraz dokładność rozwiązania. Pomiędzy ilością epok a czasem wykonania oraz pomiędzy ilością epok a ilością iteracji
+    potrzebnych do znalezienia najlepszego rozwiązania łatwo zauważyć zależność liniową (co widać na rysunku \ref{fig:epoki_analiza}). Zbyt niska wartość liczby epok skutkuje słabą dokładnością rozwiązania.
+
+    \begin{figure}[h!]
+        \centering
+        \includegraphics[width=0.8\textwidth]{figures/epochs_overview.png}
+        \caption{Zależności pomiędzy liczbą epok a czasem, ilością iteracji oraz jakością rozwiązania}
+        \label{fig:epoki_analiza}
+    \end{figure}
 
     \section{Wnioski}
 
