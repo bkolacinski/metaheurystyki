@@ -21,9 +21,9 @@ def draw_plot_section_3():
     )
 
     plt.plot(x, y)
-    plt.scatter(point[0], value, color='red', zorder=10, alpha=0.5,
-                label=f'Global maximum at x=100, f(x)=11')
     plt.scatter(100, 11, color='purple', zorder=10, alpha=0.5,
+                label=f'Global maximum at x=100, f(x)=11')
+    plt.scatter(point[0], value, color='red', zorder=10, alpha=0.5,
                 label=f'Found maximum at x={point[0]:.2f}, f(x)={value:.2f}')
     plt.xlabel('x')
     plt.ylabel('f(x)')
