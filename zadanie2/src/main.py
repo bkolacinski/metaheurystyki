@@ -76,16 +76,13 @@ def get_custom_function_1d():
     left = get_float_input("Podaj lewą granicę dziedziny")
     right = get_float_input("Podaj prawą granicę dziedziny")
 
-    # Tworzymy funkcję lambda z dostępem do funkcji matematycznych
     try:
-        # Kontekst z funkcjami matematycznymi
         math_context = {
             'sin': sin, 'cos': cos, 'tan': tan,
             'exp': exp, 'log': log, 'sqrt': sqrt,
             'pi': pi, 'e': math.e, 'abs': abs
         }
         func = eval(f"lambda x: {func_str}", math_context)
-        # Test funkcji
         func((left + right) / 2)
         return func, (left, right), 1
     except Exception as e:
@@ -110,16 +107,13 @@ def get_custom_function_2d():
     y_left = get_float_input("Podaj lewą granicę dziedziny dla y")
     y_right = get_float_input("Podaj prawą granicę dziedziny dla y")
 
-    # Tworzymy funkcję lambda z dostępem do funkcji matematycznych
     try:
-        # Kontekst z funkcjami matematycznymi
         math_context = {
             'sin': sin, 'cos': cos, 'tan': tan,
             'exp': exp, 'log': log, 'sqrt': sqrt,
             'pi': pi, 'e': math.e, 'abs': abs
         }
         func = eval(f"lambda x, y: {func_str}", math_context)
-        # Test funkcji
         test_x = (x_left + x_right) / 2
         test_y = (y_left + y_right) / 2
         func(test_x, test_y)
@@ -171,16 +165,12 @@ def main():
     print("=" * 50)
 
     while True:
-        # Wybór funkcji
         func, domain, dimensions = select_function()
 
-        # Pobranie parametrów
         epochs, attempts_per_epoch, init_temp, alpha, k = get_parameters()
 
-        # Utworzenie obiektu algorytmu
         annealing = SimulatedAnnealing(func=func, domain=domain)
 
-        # Uruchomienie algorytmu
         print("\nUruchamianie algorytmu...")
         (point, value, best_iters), exec_time = annealing.run_epochs(
             epochs=epochs,
@@ -190,12 +180,11 @@ def main():
             k=k
         )
 
-        # Wyświetlenie wyników
         display_results(point, value, best_iters, exec_time, dimensions)
 
-        # Pytanie o ponowne uruchomienie
         print("\nCzy chcesz uruchomić algorytm ponownie?")
-        repeat = input("Wpisz 'tak' aby kontynuować lub dowolny klawisz aby zakończyć: ").strip().lower()
+        repeat = input("Wpisz 'tak' aby kontynuować lub "
+                       "dowolny klawisz aby zakończyć: ").strip().lower()
         if repeat not in ['tak', 't', 'yes', 'y']:
             print("\nDziękujemy za skorzystanie z programu!")
             break
