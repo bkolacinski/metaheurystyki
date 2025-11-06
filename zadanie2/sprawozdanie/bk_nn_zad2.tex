@@ -156,6 +156,12 @@
     \end{lstlisting}
 
     \subsection{Opis uruchomienia programu}
+
+    Program uruchamia się poprzez uruchomienie pliku main.py np. komendą \texttt{python main.py} w terminalu.
+    Program umożliwia wybór jednej z czterech funkcji do optymalizacji: funkcji jednowymiarowej z sekcji 3 (przedział \([-150, 150]\)), funkcji dwuwymiarowej z sekcji 4 (obszar \([-3,12]\times[4.1,5.8]\)), lub własnej funkcji jedno- lub dwuwymiarowej.
+    Przy definiowaniu własnej funkcji dostępne są standardowe funkcje matematyczne (sinus, cosinus, tangens, eksponens, logarytm, pierwiastek kwadratowy) oraz stałe (pi i e).
+    Parametry algorytmu obejmują: liczbę epok, liczbę iteracji w epoce, temperaturę początkową, współczynnik alpha z przedziału \((0, 1)\) oraz stałą k.
+    Po zakończeniu obliczeń program wyświetla znaleziony punkt (współrzędną x dla funkcji jednowymiarowej lub współrzędne x i y dla funkcji dwuwymiarowej), wartość funkcji w tym punkcie, numer iteracji oraz czas wykonania w milisekundach.
     
 
     \newpage
@@ -253,5 +259,19 @@
 
     \section{Wnioski}
 
+    Zaimplementowany algorytm symulowanego wyżarzania jest skuteczną metodą znajdowania rozwiązań bliskich optymalnym, co potwierdzają przeprowadzone eksperymenty.
+    Nie gwarantuje on jednak znalezienia globalnego maksimum funkcji.\\
+
+    Kluczowe dla efektywności algorytmu jest odpowiednie dobranie parametrów:
+    \begin{itemize}
+        \item \textbf{Temperatura początkowa} ma istotny wpływ na jakość rozwiązania, nie wpływając na czas obliczeń.
+        Wyższa wartość pozwala na szerszą eksplorację przestrzeni rozwiązań.
+        Zbyt mała wartość może prowadzić do utknięcia w lokalnym ekstremum.
+        \item \textbf{Współczynnik chłodzenia (\(\alpha\))} decyduje o tempie obniżania temperatury, co wpływa zarówno na czas działania algorytmu, jak i na dokładność znalezionego rozwiązania.
+        Jego wartość pozwala znaleźć równowagę między szybkością zbieżności a ryzykiem przedwczesnego utknięcia w lokalnym ekstremum.
+        \item \textbf{Liczba epok} wprost przekłada się na czas wykonania i liczbę iteracji.
+        Zwiększenie tej wartości zazwyczaj poprawia jakość wyniku, lecz wiąże się z większym kosztem obliczeniowym.
+    \end{itemize}
+    Podsumowując, skuteczność algorytmu symulowanego wyżarzania jest silnie uzależniona od starannego dostrojenia parametrów w celu zbalansowania jakości rozwiązania i czasu jego poszukiwania.
 
 \end{document}
