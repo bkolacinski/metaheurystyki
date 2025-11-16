@@ -1,5 +1,7 @@
+import time
 from random import shuffle
 
+import numpy as np
 import pandas as pd
 
 
@@ -11,13 +13,11 @@ class GeneticAlgorithm:
         selection_strategy,
         cross_strategy,
         mutation_strategy,
-        population,
         items: pd.DataFrame,
     ):
         self.selection_strategy = selection_strategy
         self.cross_strategy = cross_strategy
         self.mutation_strategy = mutation_strategy
-        self.population = population
         self.items = items
 
     def generate_initial_population(self, population_size: int) -> list[list[int]]:
@@ -69,21 +69,47 @@ class GeneticAlgorithm:
         mutation_probability: float,
         population_size: int,
         iterations: int,
-    ) -> None:
-        self.population = self.generate_initial_population(population_size)
+    ) -> dict:
+        start_time = time.time()
+        population = self.generate_initial_population(population_size)
 
-        best_solution = None
-        last_solutions = None
+        history = []
+
+        best_overall_individual = None
+        best_overall_fitness = -1
 
         for i in range(iterations):
-            fitness_values = self.calculate_fitness(self.population, self.items)
+            fitness_values = self.calculate_fitness(population, self.items)
 
-            parents = self.selection_strategy.select(self.population, fitness_values)
+            current_best_fitness = max(fitness_values)
+            if current_best_fitness > best_overall_fitness:
+                best_overall_fitness = current_best_fitness
+                best_individual_index = fitness_values.index(current_best_fitness)
+                best_overall_individual = population[best_individual_index]
 
+            history.append(
+                {
+                    "iteration": i,
+                    "best_fitness": current_best_fitness,
+                    "worst_fitness": min(fitness_values),
+                    "avg_fitness": float(np.mean(fitness_values)),
+                }
+            )
+
+            parents = self.selection_strategy.select(population, fitness_values)
             children = self.cross_strategy.cross(parents, cross_probability)
-
             mutated_children = self.mutation_strategy.mutate(
                 children, mutation_probability
             )
 
-            self.population = mutated_children
+            population = mutated_children[:population_size]
+
+        end_time = time.time()
+
+        final_solution = {
+            "best_individual": best_overall_individual,
+            "best_fitness": best_overall_fitness,
+            "execution_time": end_time - start_time,
+            "history": history,
+        }
+        return final_solution

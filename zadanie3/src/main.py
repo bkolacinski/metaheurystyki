@@ -1,5 +1,6 @@
 import pandas as pd
 from genetic_algorithm import GeneticAlgorithm
+from methods import BitFlipMutation, OnePointCrossover, TournamentSelection
 
 
 def main():
@@ -17,16 +18,20 @@ def main():
     # print(data_csv)
 
     ga = GeneticAlgorithm(
-        selection_strategy=None,
-        cross_strategy=None,
-        mutation_strategy=None,
-        population=None,
+        selection_strategy=TournamentSelection(tournament_size=3),
+        cross_strategy=OnePointCrossover(),
+        mutation_strategy=BitFlipMutation(),
         items=data_csv,
     )
 
-    population = ga.generate_initial_population(population_size=100)
-
-    print(ga.calculate_fitness(population, data_csv))
+    print(
+        ga.run(
+            cross_probability=0.8,
+            mutation_probability=0.1,
+            population_size=50,
+            iterations=1000,
+        )
+    )
 
 
 if __name__ == "__main__":
