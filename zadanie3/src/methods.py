@@ -1,4 +1,4 @@
-from random import choices, sample
+from random import choices, randint, random, sample
 
 
 class TournamentSelection:
@@ -35,3 +35,68 @@ class RouletteWheelSelection:
 
         parents = choices(population, weights=probabilities, k=len(population))
         return parents
+
+
+class OnePointCrossover:
+    def cross(
+        self, parents: list[list[int]], cross_probability: float
+    ) -> list[list[int]]:
+        children = []
+        for i in range(0, len(parents), 2):
+            parent1 = parents[i]
+            if i + 1 < len(parents):
+                parent2 = parents[i + 1]
+
+                if random() < cross_probability:
+                    point = randint(1, len(parent1) - 1)
+                    child1 = parent1[:point] + parent2[point:]
+                    child2 = parent2[:point] + parent1[point:]
+                    children.extend([child1, child2])
+                else:
+                    children.extend([parent1, parent2])
+            else:
+                children.append(parent1)
+        return children
+
+
+class TwoPointCrossover:
+    def cross(
+        self, parents: list[list[int]], cross_probability: float
+    ) -> list[list[int]]:
+        children = []
+        for i in range(0, len(parents), 2):
+            parent1 = parents[i]
+            if i + 1 < len(parents):
+                parent2 = parents[i + 1]
+
+                if random() < cross_probability:
+                    point1 = random.randint(1, len(parent1) - 2)
+                    point2 = random.randint(point1, len(parent1) - 1)
+                    child1 = (
+                        parent1[:point1] + parent2[point1:point2] + parent1[point2:]
+                    )
+                    child2 = (
+                        parent2[:point1] + parent1[point1:point2] + parent2[point2:]
+                    )
+                    children.extend([child1, child2])
+                else:
+                    children.extend([parent1, parent2])
+            else:
+                children.append(parent1)
+        return children
+
+
+class BitFlipMutation:
+    def mutate(
+        self, children: list[list[int]], mutation_probability: float
+    ) -> list[list[int]]:
+        mutated_children = []
+        for child in children:
+            mutated_child = []
+            for gene in child:
+                if random() < mutation_probability:
+                    mutated_child.append(1 - gene)
+                else:
+                    mutated_child.append(gene)
+            mutated_children.append(mutated_child)
+        return mutated_children
