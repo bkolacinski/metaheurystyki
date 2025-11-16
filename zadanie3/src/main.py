@@ -3,17 +3,16 @@ from genetic_algorithm import GeneticAlgorithm
 
 
 def main():
-    data_csv = pd.read_csv('../data/problem plecakowy dane CSV tabulatory.csv',
-                           delimiter='\t', index_col=0).rename_axis(None)
+    data_csv = pd.read_csv(
+        "../data/problem plecakowy dane CSV tabulatory.csv", delimiter="\t", index_col=0
+    ).rename_axis(None)
 
-    data_csv.columns = [
-        'Nazwa',
-        'Waga',
-        'Wartosc'
-    ]
+    data_csv.columns = ["Nazwa", "Waga", "Wartosc"]
 
-    data_csv['Waga'] = data_csv['Waga'].astype(str).str.replace(' ', '').astype(int)
-    data_csv['Wartosc'] = data_csv['Wartosc'].astype(str).str.replace(' ', '').astype(int)
+    data_csv["Waga"] = data_csv["Waga"].astype(str).str.replace(" ", "").astype(int)
+    data_csv["Wartosc"] = (
+        data_csv["Wartosc"].astype(str).str.replace(" ", "").astype(int)
+    )
 
     # print(data_csv)
 
@@ -22,7 +21,7 @@ def main():
         cross_strategy=None,
         mutation_strategy=None,
         population=None,
-        items=data_csv
+        items=data_csv,
     )
 
     population = ga.generate_initial_population(population_size=100)
