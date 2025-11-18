@@ -1,0 +1,134 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[polish]{babel}
+\usepackage[a4paper, margin=3cm]{geometry}
+\usepackage{array}
+\usepackage{tocloft}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{hyperref}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2
+}
+
+\lstset{style=mystyle}
+\renewcommand{\lstlistingname}{Kod}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=black,
+    urlcolor=blue
+}
+
+\renewcommand{\cftsecleader}{\cftdotfill{\cftdotsep}}
+
+\begin{document}
+    \title{Metaheurystyki --- zadanie 3 \\
+    \large Algorytm genetyczny \\
+    \small GRUPA 3 --- piątek 10:15}
+    \date{\today}
+    \author{
+        Bartosz Kołaciński \\
+        251554
+        \and
+        Nikodem Nowak \\
+        251598
+    }
+    \maketitle
+
+    \vfill
+    \begin{center}
+        \begin{tabular}{lr}
+            \toprule
+            \textbf{Użyte technologie} & Python 3.13 \\
+            \midrule
+            \textbf{Użyte biblioteki} & \begin{tabular}[t]{@{}r@{}}
+                przykladowa \\
+                tresc
+            \end{tabular} \\
+            \bottomrule
+        \end{tabular}
+    \end{center}
+    \vspace{1cm}
+
+    \newpage
+
+    \tableofcontents
+
+    \newpage
+
+    \section{Opis zasad działania algorytmu}
+    \subsection{Opis algorytmu genetycznego}
+
+    TODO
+
+    \subsection{Założenia podstawowe}
+
+    TODO
+
+    \subsection{Opis implementacji rozwiązania}
+
+    TODO \texttt{self.func}
+
+    \begin{lstlisting}[language=Python, caption={TODO}]
+    pass
+    \end{lstlisting}
+
+    \subsection{Instrukcja uruchomienia programu}
+
+    TODO \texttt{python run.py}
+
+    \newpage
+
+    \section{Eksperymenty i wyniki}
+
+    Dla każdego zestawu parametrów algorytm został uruchomiony 5 razy w celu zredukowania losowości wyników. Przyjęte oznacznia dla poszczególnych parametrów to:
+    \begin{itemize}
+        \item \(oznacznie\) -- prawdopodobieństwo krzyżowania,
+        \item \(oznacznie\) -- prawdopodobieństwo mutacji,
+        \item \(oznacznie\) -- wielkość populacji,
+        \item \(oznacznie\) -- liczba iteracji.
+    \end{itemize}
+
+    \noindent
+    TODO
+
+    % \begin{figure}[h!]
+    %     \centering
+    %     \includegraphics[width=0.8\textwidth]{figures/<nazwa_pliku>.png}
+    %     \caption{TODO}
+    %     \label{fig:<nazwa_etykiety>}
+    % \end{figure}
+
+    \newpage
+
+    \section{Analiza wyników i wnioski}
+
+    TODO
+
+\end{document}
