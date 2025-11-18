@@ -1,4 +1,5 @@
 import pandas as pd
+
 from genetic_algorithm import GeneticAlgorithm
 from methods import BitFlipMutation, OnePointCrossover, TournamentSelection
 
@@ -24,14 +25,13 @@ def main():
         items=data_csv,
     )
 
-    print(
-        ga.run(
-            cross_probability=0.8,
-            mutation_probability=0.1,
-            population_size=50,
-            iterations=1000,
-        )
+    result, history = ga.run(
+        cross_probability=0.8,
+        mutation_probability=0.1,
+        population_size=50,
+        iterations=1000,
     )
+    print(result)
 
 
 if __name__ == "__main__":

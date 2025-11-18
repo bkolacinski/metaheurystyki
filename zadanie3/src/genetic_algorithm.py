@@ -9,11 +9,11 @@ class GeneticAlgorithm:
     MAX_WEIGHT = 6404180
 
     def __init__(
-        self,
-        selection_strategy,
-        cross_strategy,
-        mutation_strategy,
-        items: pd.DataFrame,
+            self,
+            selection_strategy,
+            cross_strategy,
+            mutation_strategy,
+            items: pd.DataFrame,
     ):
         self.selection_strategy = selection_strategy
         self.cross_strategy = cross_strategy
@@ -43,7 +43,7 @@ class GeneticAlgorithm:
         return initial_population
 
     def calculate_fitness(
-        self, population: list[list[int]], items: pd.DataFrame
+            self, population: list[list[int]], items: pd.DataFrame
     ) -> list[float]:
         fitness_values = []
 
@@ -64,12 +64,12 @@ class GeneticAlgorithm:
         return fitness_values
 
     def run(
-        self,
-        cross_probability: float,
-        mutation_probability: float,
-        population_size: int,
-        iterations: int,
-    ) -> dict:
+            self,
+            cross_probability: float,
+            mutation_probability: float,
+            population_size: int,
+            iterations: int,
+    ) -> tuple[dict, dict]:
         start_time = time.time()
         population = self.generate_initial_population(population_size)
 
@@ -102,14 +102,13 @@ class GeneticAlgorithm:
                 children, mutation_probability
             )
 
-            population = mutated_children[:population_size]
+            population = mutated_children[:]
 
         end_time = time.time()
 
         final_solution = {
             "best_individual": best_overall_individual,
             "best_fitness": best_overall_fitness,
-            "execution_time": end_time - start_time,
-            "history": history,
+            "execution_time": end_time - start_time
         }
-        return final_solution
+        return final_solution, history

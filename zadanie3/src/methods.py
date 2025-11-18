@@ -92,11 +92,9 @@ class BitFlipMutation:
     ) -> list[list[int]]:
         mutated_children = []
         for child in children:
-            mutated_child = []
-            for gene in child:
-                if random() < mutation_probability:
-                    mutated_child.append(1 - gene)
-                else:
-                    mutated_child.append(gene)
+            mutated_child = child[:]
+            if random() < mutation_probability:
+                index = randint(0, len(child) - 1)
+                mutated_child[index] = 1 - mutated_child[index]
             mutated_children.append(mutated_child)
         return mutated_children
