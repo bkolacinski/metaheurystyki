@@ -69,7 +69,7 @@ class GeneticAlgorithm:
             mutation_probability: float,
             population_size: int,
             iterations: int,
-    ) -> tuple[dict, dict]:
+    ) -> tuple[dict, list[dict]]:
         start_time = time.time()
         population = self.generate_initial_population(population_size)
 
@@ -91,7 +91,10 @@ class GeneticAlgorithm:
                 {
                     "iteration": i,
                     "best_fitness": current_best_fitness,
-                    "worst_fitness": min(fitness_values),
+                    "worst_fitness": min(
+                        [f for f in fitness_values if f > 0],
+                        default=0
+                    ),
                     "avg_fitness": float(np.mean(fitness_values)),
                 }
             )
