@@ -1,4 +1,5 @@
 import time
+from functools import cache, lru_cache
 from random import shuffle
 
 import numpy as np
@@ -19,6 +20,9 @@ class GeneticAlgorithm:
         self.cross_strategy = cross_strategy
         self.mutation_strategy = mutation_strategy
         self.items = items
+
+        self.weights = self.items["Waga"].values
+        self.values = self.items["Wartosc"].values
 
     def generate_initial_population(self, population_size: int) -> list[list[int]]:
         initial_population = []
@@ -43,25 +47,30 @@ class GeneticAlgorithm:
         return initial_population
 
     def calculate_fitness(
-            self, population: list[list[int]], items: pd.DataFrame
+            self, population: list[list[int]]
     ) -> list[float]:
         fitness_values = []
 
-        weights = items["Waga"].values
-        values = items["Wartosc"].values
-
         for individual in population:
-            total_weight = sum(
-                gene * weight for gene, weight in zip(individual, weights)
-            )
-            total_value = sum(gene * value for gene, value in zip(individual, values))
-
-            if total_weight > self.MAX_WEIGHT:
-                fitness_values.append(0.0)
-            else:
-                fitness_values.append(int(total_value))
+            fitness_values.append(self.calculate_fitness_indiv(
+                tuple(individual)))
 
         return fitness_values
+
+    @cache
+    def calculate_fitness_indiv(
+            self, individual
+    ) -> float:
+        total_weight = sum(
+            gene * weight for gene, weight in zip(individual, self.weights)
+        )
+        total_value = sum(gene * value for gene, value in
+                          zip(individual, self.values))
+
+        if total_weight > self.MAX_WEIGHT:
+            return 0.0
+        else:
+            return int(total_value)
 
     def run(
             self,
@@ -79,7 +88,7 @@ class GeneticAlgorithm:
         best_overall_fitness = -1
 
         for i in range(iterations):
-            fitness_values = self.calculate_fitness(population, self.items)
+            fitness_values = self.calculate_fitness(population)
 
             current_best_fitness = max(fitness_values)
             if current_best_fitness > best_overall_fitness:
@@ -99,7 +108,8 @@ class GeneticAlgorithm:
                 }
             )
 
-            parents = self.selection_strategy.select(population, fitness_values)
+            parents = self.selection_strategy.select(tuple(population),
+                                                     tuple(fitness_values))
             children = self.cross_strategy.cross(parents, cross_probability)
             mutated_children = self.mutation_strategy.mutate(
                 children, mutation_probability

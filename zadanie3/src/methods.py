@@ -6,7 +6,7 @@ class TournamentSelection:
         self.tournament_size = tournament_size
 
     def select(
-        self, population: list[list[int]], fitness_values: list[float]
+        self, population: tuple[list[int]], fitness_values: tuple[float]
     ) -> list[list[int]]:
         parents = []
         population_with_fitness = list(zip(population, fitness_values))
@@ -22,10 +22,10 @@ class TournamentSelection:
 
 
 class RouletteWheelSelection:
+    @staticmethod
     def select(
-        self, population: list[list[int]], fitness_values: list[float]
+        population: list[list[int]], fitness_values: list[float]
     ) -> list[list[int]]:
-        parents = []
         total_fitness = sum(fitness_values)
 
         if total_fitness == 0:
@@ -38,8 +38,9 @@ class RouletteWheelSelection:
 
 
 class OnePointCrossover:
+    @staticmethod
     def cross(
-        self, parents: list[list[int]], cross_probability: float
+        parents: list[list[int]], cross_probability: float
     ) -> list[list[int]]:
         children = []
         for i in range(0, len(parents), 2):
@@ -60,8 +61,9 @@ class OnePointCrossover:
 
 
 class TwoPointCrossover:
+    @staticmethod
     def cross(
-        self, parents: list[list[int]], cross_probability: float
+        parents: list[list[int]], cross_probability: float
     ) -> list[list[int]]:
         children = []
         for i in range(0, len(parents), 2):
@@ -70,13 +72,17 @@ class TwoPointCrossover:
                 parent2 = parents[i + 1]
 
                 if random() < cross_probability:
-                    point1 = random.randint(1, len(parent1) - 2)
-                    point2 = random.randint(point1, len(parent1) - 1)
+                    point1 = randint(1, len(parent1) - 2)
+                    point2 = randint(point1, len(parent1) - 1)
                     child1 = (
-                        parent1[:point1] + parent2[point1:point2] + parent1[point2:]
+                        parent1[:point1] +
+                        parent2[point1:point2] +
+                        parent1[point2:]
                     )
                     child2 = (
-                        parent2[:point1] + parent1[point1:point2] + parent2[point2:]
+                        parent2[:point1] +
+                        parent1[point1:point2] +
+                        parent2[point2:]
                     )
                     children.extend([child1, child2])
                 else:
@@ -87,8 +93,9 @@ class TwoPointCrossover:
 
 
 class BitFlipMutation:
+    @staticmethod
     def mutate(
-        self, children: list[list[int]], mutation_probability: float
+        children: list[list[int]], mutation_probability: float
     ) -> list[list[int]]:
         mutated_children = []
         for child in children:
