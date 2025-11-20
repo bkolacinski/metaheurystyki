@@ -1,17 +1,17 @@
-import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 
 from genetic_algorithm import GeneticAlgorithm
 from methods import BitFlipMutation, OnePointCrossover, TournamentSelection
+from read_data import read_data_csv
 
 
-def plot_1(data: pd.DataFrame,
+def plot_1(data: list[dict],
            selection_strategy,
            cross_strategy,
            mutation_strategy,
            parameters: dict):
-
     result, history = GeneticAlgorithm(
         selection_strategy=selection_strategy,
         cross_strategy=cross_strategy,
@@ -76,21 +76,8 @@ def plot_1(data: pd.DataFrame,
 
 
 def main():
-    data_csv = pd.read_csv(
-        "../data/problem plecakowy dane CSV tabulatory.csv",
-        delimiter="\t", index_col=0
-    )
-    data_csv.rename_axis(None)
-
-    data_csv.columns = ["Nazwa", "Waga", "Wartosc"]
-
-    data_csv["Waga"] = (data_csv["Waga"]
-                        .astype(str)
-                        .str.replace(" ", "")
-                        .astype(int))
-    data_csv["Wartosc"] = (
-        data_csv["Wartosc"].astype(str).str.replace(" ", "").astype(int)
-    )
+    data_csv = read_data_csv('../data/problem plecakowy'
+                             ' dane CSV tabulatory.csv')
 
     plot_1(
         data=data_csv,

@@ -3,7 +3,6 @@ from functools import cache, lru_cache
 from random import shuffle
 
 import numpy as np
-import pandas as pd
 
 
 class GeneticAlgorithm:
@@ -14,7 +13,7 @@ class GeneticAlgorithm:
             selection_strategy,
             cross_strategy,
             mutation_strategy,
-            items: pd.DataFrame,
+            items: list[dict],
     ):
         self.selection_strategy = selection_strategy
         self.cross_strategy = cross_strategy

@@ -1,104 +1,90 @@
-from itertools import product
-
-import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
 
 from genetic_algorithm import GeneticAlgorithm
 from methods import *
+from read_data import read_data_csv
+
+
+def bar_plot(max_data: dict,
+             avg_data: dict,
+             title: str,
+             xlabel: str,
+             ylabel: str) -> None:
+    labels = list(max_data.keys())
+    max_values = list(max_data.values())
+    avg_values = list(avg_data.values())
+
+    x = np.arange(len(labels))
+
+    fig, ax = plt.subplots()
+    bars = ax.bar(x, max_values, 0.6, color='green')
+    ax.bar(x, avg_values, 0.6, color='orange')
+
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    ax.set_title(title)
+    ax.set_xticks(x)
+    ax.set_xticklabels(labels, rotation=45, ha='right')
+
+    for bar in bars:
+        height = bar.get_height()
+        ax.annotate(f'{height:.2f}',
+                    xy=(bar.get_x() + bar.get_width() / 2, height),
+                    xytext=(0, 3),
+                    textcoords="offset points",
+                    ha='center', va='bottom')
+
+    plt.tight_layout()
+    plt.close()
+
+
+def run_experiment(ga_parameters: dict,
+                   run_parameters: dict,
+                   x: int) -> tuple[float, float]:
+    best_fitness, avg_best_fitness = 0, 0
+
+    ga = GeneticAlgorithm(
+        selection_strategy=ga_parameters["selection_strategy"],
+        cross_strategy=ga_parameters["cross_strategy"],
+        mutation_strategy=ga_parameters["mutation_strategy"],
+        items=ga_parameters["items"]
+    )
+
+    for _ in range(x):
+        result, _ = ga.run(
+            population_size=run_parameters["population_size"],
+            cross_probability=run_parameters["cross_probability"],
+            mutation_probability=run_parameters["mutation_probability"],
+            iterations=run_parameters["iterations"]
+        )
+
+        if result["best_fitness"] > best_fitness:
+            best_fitness = result["best_fitness"]
+        avg_best_fitness += result["best_fitness"]
+
+    return best_fitness, avg_best_fitness // x
 
 
 def main():
-    data_csv = pd.read_csv(
-        "../data/problem plecakowy dane CSV tabulatory.csv",
-        delimiter="\t", index_col=0
-    )
-    data_csv.rename_axis(None)
-    data_csv.columns = ["Nazwa", "Waga", "Wartosc"]
-    data_csv["Waga"] = (data_csv["Waga"]
-                        .astype(str)
-                        .str.replace(" ", "")
-                        .astype(int))
-    data_csv["Wartosc"] = (
-        data_csv["Wartosc"].astype(str).str.replace(" ", "").astype(int)
-    )
+    data_csv = read_data_csv('../data/problem plecakowy '
+                             'dane CSV tabulatory.csv')
 
-    selection_strategies = [
-        TournamentSelection(tournament_size=3),
-        RouletteWheelSelection()
-    ]
-    cross_strategies = [
-        OnePointCrossover(),
-        TwoPointCrossover()
-    ]
-    mutation_strategy = BitFlipMutation()
+    ga_parameters = {
+        "selection_strategy": TournamentSelection(tournament_size=2),
+        "cross_strategy": TwoPointCrossover,
+        "mutation_strategy": BitFlipMutation,
+        "items": data_csv
+    }
 
-    cross_probabilities = [0.6, 0.8, 1.0]
-    mutation_probabilities = [0.01, 0.05, 0.1]
-    population_sizes = [50, 100, 200]
-    iterations = 1000
+    run_parameters = {
+        "population_size": 200,
+        "cross_probability": 0.8,
+        "mutation_probability": 0.05,
+        "iterations": 1000
+    }
 
-    combinations = product(
-        selection_strategies,
-        cross_strategies,
-        cross_probabilities,
-        mutation_probabilities,
-        population_sizes
-    )
-
-    for (selection_strategy, cross_strategy, cross_probability,
-         mutation_probability, population_size) in combinations:
-        print(f'\n{"=" * 80}\n'
-              f'Strategia selekcji: {selection_strategy.__class__.__name__}\n'
-              f'Strategia krzyżowania: {cross_strategy.__class__.__name__}\n'
-              f'Strategia mutacji: {mutation_strategy.__class__.__name__}\n'
-              f'Prawdopodobieństwo krzyżowania: {cross_probability}\n'
-              f'Prawdopodobieństwo mutacji: {mutation_probability}\n'
-              f'Wielkość populacji: {population_size}\n'
-              f'Liczba iteracji: {iterations}\n')
-
-        ga = GeneticAlgorithm(
-            selection_strategy=selection_strategy,
-            cross_strategy=cross_strategy,
-            mutation_strategy=mutation_strategy,
-            items=data_csv
-        )
-
-        best_result = {
-            "best_fitness": 0,
-            "best_individual": None
-        }
-
-        worst_result = {
-            "worst_fitness": float('inf'),
-            "worst_individual": None
-        }
-
-        avg_result_value = 0.0
-
-        exec_time = 0.0
-
-        for _ in range(5):
-            result, _ = ga.run(
-                cross_probability=cross_probability,
-                mutation_probability=mutation_probability,
-                population_size=population_size,
-                iterations=iterations
-            )
-
-            if result["best_fitness"] > best_result["best_fitness"]:
-                best_result["best_fitness"] = result["best_fitness"]
-                best_result["best_individual"] = result["best_individual"]
-            if result["best_fitness"] < worst_result["worst_fitness"]:
-                worst_result["worst_fitness"] = result["best_fitness"]
-                worst_result["worst_individual"] = result["best_individual"]
-            avg_result_value += result["best_fitness"]
-            exec_time += result["execution_time"]
-
-        print(f'Najlepszy wynik: {best_result["best_fitness"]} - '
-              f'({best_result["best_individual"]})\n'
-              f'Najgorszy wynik: {worst_result["worst_fitness"]} - '
-              f'({worst_result["worst_individual"]})\n'
-              f'Średni wynik: {avg_result_value / 5}\n'
-              f'Czas wykonania 5 uruchomień: {exec_time:.3f} sekund\n')
+    # TODO DOKONCZYC
 
 
 if __name__ == "__main__":
