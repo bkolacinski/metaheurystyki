@@ -1,4 +1,7 @@
+import os
 from itertools import product
+
+import pandas as pd
 
 from genetic_algorithm import GeneticAlgorithm
 from methods import *
@@ -8,6 +11,9 @@ from read_data import read_data_csv
 def main():
     data_csv = read_data_csv('../data/problem plecakowy'
                              ' dane CSV tabulatory.csv')
+
+    results_dir = os.path.join(os.path.dirname(__file__), '..', 'results')
+    os.makedirs(results_dir, exist_ok=True)
 
     selection_strategies = [
         TournamentSelection(tournament_size=3),
@@ -43,6 +49,11 @@ def main():
               f'Wielkość populacji: {population_size}\n'
               f'Liczba iteracji: {iterations}\n')
 
+        sel_name = "Tour" if isinstance(selection_strategy, TournamentSelection) else "Roul"
+        cross_name = "1P" if isinstance(cross_strategy, OnePointCrossover) else "2P"
+        filename = f"{sel_name}_{cross_name}_cp{cross_probability}_mp{mutation_probability}_pop{population_size}_it{iterations}.csv"
+        filepath = os.path.join(results_dir, filename)
+
         ga = GeneticAlgorithm(
             selection_strategy=selection_strategy,
             cross_strategy=cross_strategy,
@@ -61,16 +72,23 @@ def main():
         }
 
         avg_result_value = 0.0
-
         exec_time = 0.0
 
-        for _ in range(5):
-            result, _ = ga.run(
+        all_runs_history = []
+
+        for i in range(5):
+            result, history = ga.run(
                 cross_probability=cross_probability,
                 mutation_probability=mutation_probability,
                 population_size=population_size,
                 iterations=iterations
             )
+
+            # Add run metadata to history
+            for entry in history:
+                entry['run_id'] = i + 1
+                entry['execution_time'] = result['execution_time']
+            all_runs_history.extend(history)
 
             if result["best_fitness"] > best_result["best_fitness"]:
                 best_result["best_fitness"] = result["best_fitness"]
@@ -80,6 +98,9 @@ def main():
                 worst_result["worst_individual"] = result["best_individual"]
             avg_result_value += result["best_fitness"]
             exec_time += result["execution_time"]
+
+        # Save history to CSV
+        pd.DataFrame(all_runs_history).to_csv(filepath, index=False)
 
         print(f'Najlepszy wynik: {best_result["best_fitness"]} - '
               f'({best_result["best_individual"]})\n'
