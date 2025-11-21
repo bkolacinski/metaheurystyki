@@ -1,7 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-
 from genetic_algorithm import GeneticAlgorithm
 from methods import BitFlipMutation, OnePointCrossover, TournamentSelection
 from read_data import read_data_csv
@@ -72,6 +71,7 @@ def plot_1(data: list[dict],
         axes[idx].grid(True)
 
     plt.tight_layout()
+    plt.savefig("../plots/fig_1.png")
     plt.show()
 
 
