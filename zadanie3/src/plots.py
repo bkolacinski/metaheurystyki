@@ -17,12 +17,12 @@ def bar_plot(max_data: dict,
     max_values = list(max_data.values())
     avg_values = list(avg_data.values())
 
-    x = np.arange(len(labels))
+    labels_spread = np.arange(len(labels))
 
-    _, ax = plt.subplots()
+    _, ax = plt.subplots(figsize=(8, 5))
 
     bars_max = ax.bar(
-        x,
+        labels_spread,
         max_values,
         width=0.6,
         color='green',
@@ -30,7 +30,7 @@ def bar_plot(max_data: dict,
         label='Max')
 
     bars_avg = ax.bar(
-        x,
+        labels_spread,
         avg_values,
         width=0.6,
         color='orange',
@@ -40,24 +40,46 @@ def bar_plot(max_data: dict,
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
     ax.set_title(title)
-    ax.set_xticks(x)
+    ax.set_xticks(labels_spread)
     ax.set_xticklabels(labels, rotation=45, ha='right')
     ax.set_yscale('log')
     ax.legend()
 
-    for _, (bar_max, max_val) in enumerate(zip(bars_max, max_values)):
-        ax.annotate(f'{int(max_val)}',
-                    xy=(bar_max.get_x() + bar_max.get_width() / 2, max_val),
-                    xytext=(0, 1),
-                    textcoords="offset points",
-                    ha='center', va='bottom', fontsize=8, color='black')
+    all_values = max_values + avg_values
+    y_min, y_max = min(all_values), max(all_values)
+    y_range = y_max - y_min
 
-    for _, (bar_avg, avg_val) in enumerate(zip(bars_avg, avg_values)):
-        ax.annotate(f'{int(avg_val)}',
-                    xy=(bar_avg.get_x() + bar_avg.get_width() / 2, avg_val),
-                    xytext=(0, 1),
-                    textcoords="offset points",
-                    ha='center', va='bottom', fontsize=8, color='black')
+    if y_range > 0:
+        log_y_min = np.log10(y_min)
+        log_y_max = np.log10(y_max)
+        log_range = log_y_max - log_y_min
+
+        margin = log_range * 0.05
+
+        ax.set_ylim(
+            10 ** (log_y_min - margin),
+            10 ** (log_y_max + margin)
+        )
+
+        log_ticks = np.linspace(log_y_min, log_y_max, 5)
+        tick_values = [10 ** x for x in log_ticks]
+
+        ax.yaxis.set_major_locator(
+            ticker.FixedLocator(tick_values))
+        ax.yaxis.set_minor_locator(ticker.NullLocator())
+
+        ax.yaxis.set_major_formatter(ticker.FuncFormatter(
+            lambda x, _: f'{int(x):,}' if x >= 1 else f'{x:.2e}'
+        ))
+
+    ax.grid(True, which='major', alpha=0.3, axis='y')
+
+    for bars, values in [(bars_max, max_values), (bars_avg, avg_values)]:
+        for bar, val in zip(bars, values):
+            ax.annotate(f'{int(val)}', ha='center', va='bottom',
+                        xy=(bar.get_x() + bar.get_width() / 2, val),
+                        xytext=(0, 1), textcoords="offset points",
+                        fontsize=8, color='black')
 
     plt.tight_layout()
     plt.savefig(f"../plots/{filename}")
@@ -128,12 +150,12 @@ def plot_over_time(csv_filename: str,
             margin = log_range * 0.05
 
             axes[idx].set_ylim(
-                10**(log_y_min - margin),
-                10**(log_y_max + margin)
+                10 ** (log_y_min - margin),
+                10 ** (log_y_max + margin)
             )
 
             log_ticks = np.linspace(log_y_min, log_y_max, 5)
-            tick_values = [10**x for x in log_ticks]
+            tick_values = [10 ** x for x in log_ticks]
 
             axes[idx].yaxis.set_major_locator(
                 ticker.FixedLocator(tick_values))
@@ -281,11 +303,16 @@ def main():
     print("ZAKOŃCZONO - Wszystkie wykresy zapisane w katalogu ../plots/")
     print("=" * 80)
     print("\nWygenerowane pliki:")
-    print("  1. comparison_bar_plot.png - wykres słupkowy porównawczy")
-    print("  2. Tour_Best_over_time.png - wykres over-time dla najlepszej konfiguracji Tournament")
-    print("  3. Tour_Worst_over_time.png - wykres over-time dla najgorszej konfiguracji Tournament")
-    print("  4. Roul_Best_over_time.png - wykres over-time dla najlepszej konfiguracji Roulette")
-    print("  5. Roul_Worst_over_time.png - wykres over-time dla najgorszej konfiguracji Roulette")
+    print("  1. comparison_bar_plot.png - "
+          "wykres słupkowy porównawczy")
+    print("  2. Tour_Best_over_time.png - "
+          "wykres over-time dla najlepszej konfiguracji Tournament")
+    print("  3. Tour_Worst_over_time.png - "
+          "wykres over-time dla najgorszej konfiguracji Tournament")
+    print("  4. Roul_Best_over_time.png - "
+          "wykres over-time dla najlepszej konfiguracji Roulette")
+    print("  5. Roul_Worst_over_time.png - "
+          "wykres over-time dla najgorszej konfiguracji Roulette")
     print("=" * 80 + "\n")
 
 

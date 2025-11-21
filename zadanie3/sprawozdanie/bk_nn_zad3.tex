@@ -107,23 +107,51 @@
 
     \section{Eksperymenty i wyniki}
 
-    Dla każdego zestawu parametrów algorytm został uruchomiony 5 razy w celu zredukowania losowości wyników. Przyjęte oznacznia dla poszczególnych parametrów to:
+    Dla każdej możliwej kombinacji parametrów (108 możliwości) algorytm został uruchomiony 5 razy w celu zredukowania losowości wyników. Przeprowadzone eksperymenty obejmowały następujące wartości parametrów:
     \begin{itemize}
-        \item \(oznacznie\) -- prawdopodobieństwo krzyżowania,
-        \item \(oznacznie\) -- prawdopodobieństwo mutacji,
-        \item \(oznacznie\) -- wielkość populacji,
-        \item \(oznacznie\) -- liczba iteracji.
+        \item \textbf{Strategia selekcji} -- Ruletka, Turniej (rozmiar turnieju = 3),
+        \item \textbf{Strategia krzyżowania} -- Jednopunktowe, Dwupunktowe,
+        \item \textbf{Strategia mutacji} -- BitFlip,
+        \item \textbf{Prawdopodobieństwo krzyżowania} -- 0.6, 0.8, 1.0,
+        \item \textbf{Prawdopodobieństwo mutacji} -- 0.01, 0.05, 0.1,
+        \item \textbf{Wielkość populacji} -- 50, 100, 200,
+        \item \textbf{Liczba iteracji} -- 1000.
     \end{itemize}
 
-    \noindent
-    TODO
+    \begin{figure}[h!]
+        \centering
+        \includegraphics[width=0.8\textwidth]{../plots/comparison_bar_plot.png}
+        \caption{Porównanie wyników dla najgorszego i najlepszego uruchomienia dla danych strategii selekcji.}
+        \label{fig:wykres_slupkowy}
+    \end{figure}
 
-    % \begin{figure}[h!]
-    %     \centering
-    %     \includegraphics[width=0.8\textwidth]{figures/<nazwa_pliku>.png}
-    %     \caption{TODO}
-    %     \label{fig:<nazwa_etykiety>}
-    % \end{figure}
+    \begin{figure}[h!]
+        \centering
+        \includegraphics[width=0.8\textwidth]{../plots/Roul_Best_over_time.png}
+        \caption{Wykres najlepszego, średniego i najgorszego wyniku w zależności od liczby iteracji dla strategii selekcji ruletkowej (najlepszy otrzymany wynik).}
+        \label{fig:wykres_ruletka_najlepszy}
+    \end{figure}
+
+    \begin{figure}[h!]
+        \centering
+        \includegraphics[width=0.8\textwidth]{../plots/Roul_Worst_over_time.png}
+        \caption{Wykres najlepszego, średniego i najgorszego wyniku w zależności od liczby iteracji dla strategii selekcji ruletkowej (najgorszy otrzymany wynik).}
+        \label{fig:wykres_ruletka_najgorszy}
+    \end{figure}
+
+    \begin{figure}[h!]
+        \centering
+        \includegraphics[width=0.8\textwidth]{../plots/Tour_Best_over_time.png}
+        \caption{Wykres najlepszego, średniego i najgorszego wyniku w zależności od liczby iteracji dla strategii selekcji turniejowej (najlepszy otrzymany wynik).}
+        \label{fig:wykres_turniej_najlepszy}
+    \end{figure}
+
+    \begin{figure}[h!]
+        \centering
+        \includegraphics[width=0.8\textwidth]{../plots/Tour_Worst_over_time.png}
+        \caption{Wykres najlepszego, średniego i najgorszego wyniku w zależności od liczby iteracji dla strategii selekcji turniejowej (najgorszy otrzymany wynik).}
+        \label{fig:wykres_turniej_najgorszy}
+    \end{figure}
 
     \newpage
 
