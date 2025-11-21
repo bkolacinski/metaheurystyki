@@ -1,29 +1,90 @@
+import os
+from pathlib import Path
+
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 import numpy as np
 import pandas as pd
-from genetic_algorithm import GeneticAlgorithm
-from methods import BitFlipMutation, OnePointCrossover, TournamentSelection
-from read_data import read_data_csv
 
 
-def plot_1(data: list[dict],
-           selection_strategy,
-           cross_strategy,
-           mutation_strategy,
-           parameters: dict):
-    result, history = GeneticAlgorithm(
-        selection_strategy=selection_strategy,
-        cross_strategy=cross_strategy,
-        mutation_strategy=mutation_strategy,
-        items=data
-    ).run(
-        cross_probability=parameters["cross_probability"],
-        mutation_probability=parameters["mutation_probability"],
-        population_size=parameters["population_size"],
-        iterations=parameters["iterations"],
-    )
+def bar_plot(max_data: dict,
+             avg_data: dict,
+             title: str,
+             xlabel: str,
+             ylabel: str,
+             filename: str) -> None:
+    labels = list(max_data.keys())
+    max_values = list(max_data.values())
+    avg_values = list(avg_data.values())
 
-    fig, axes = plt.subplots(nrows=3, ncols=1, figsize=(12, 10))
+    x = np.arange(len(labels))
+
+    _, ax = plt.subplots()
+
+    bars_max = ax.bar(
+        x,
+        max_values,
+        width=0.6,
+        color='green',
+        alpha=0.7,
+        label='Max')
+
+    bars_avg = ax.bar(
+        x,
+        avg_values,
+        width=0.6,
+        color='orange',
+        alpha=0.8,
+        label='Avg')
+
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    ax.set_title(title)
+    ax.set_xticks(x)
+    ax.set_xticklabels(labels, rotation=45, ha='right')
+    ax.set_yscale('log')
+    ax.legend()
+
+    for _, (bar_max, max_val) in enumerate(zip(bars_max, max_values)):
+        ax.annotate(f'{int(max_val)}',
+                    xy=(bar_max.get_x() + bar_max.get_width() / 2, max_val),
+                    xytext=(0, 1),
+                    textcoords="offset points",
+                    ha='center', va='bottom', fontsize=8, color='black')
+
+    for _, (bar_avg, avg_val) in enumerate(zip(bars_avg, avg_values)):
+        ax.annotate(f'{int(avg_val)}',
+                    xy=(bar_avg.get_x() + bar_avg.get_width() / 2, avg_val),
+                    xytext=(0, 1),
+                    textcoords="offset points",
+                    ha='center', va='bottom', fontsize=8, color='black')
+
+    plt.tight_layout()
+    plt.savefig(f"../plots/{filename}")
+    plt.close()
+
+
+def plot_over_time(csv_filename: str,
+                   filename: str,
+                   config_name: str):
+    df = pd.read_csv(f"../results/{csv_filename}.csv")
+
+    best_fitness_per_run = df.groupby('run_id')['best_fitness'].max()
+    best_run_id = best_fitness_per_run.idxmax()
+
+    history_df = df[df['run_id'] ==
+                    best_run_id].sort_values(by='iteration')
+
+    history = []
+    for _, row in history_df.iterrows():
+        history.append({
+            'iteration': int(row['iteration']),
+            'best_fitness': row['best_fitness'],
+            'avg_fitness': row['avg_fitness'],
+            'worst_fitness': row['worst_fitness']
+        })
+
+    _, axes = plt.subplots(nrows=3, ncols=1, figsize=(12, 10))
 
     metrics = {
         0: {
@@ -53,44 +114,179 @@ def plot_1(data: list[dict],
                        label=metric['label'], color=metric['color'])
         axes[idx].set_xlabel('Iteration')
         axes[idx].set_ylabel('Fitness')
-        axes[idx].set_title(metric['title'])
+        axes[idx].set_title(f"{metric['title']} - {config_name}")
         axes[idx].set_yscale('log')
 
         y_min, y_max = min(metric['data']), max(metric['data'])
         y_range = y_max - y_min
-        axes[idx].set_ylim(
-            min(y_min - 0.05 * y_range, y_min),
-            y_max + 0.05 * y_range
-        )
 
-        ticks = np.linspace(y_min, y_max, 5)
-        axes[idx].yaxis.set_major_locator(plt.FixedLocator(ticks))
-        axes[idx].yaxis.set_minor_locator(plt.NullLocator())
+        if y_range > 0:
+            log_y_min = np.log10(y_min)
+            log_y_max = np.log10(y_max)
+            log_range = log_y_max - log_y_min
+
+            margin = log_range * 0.05
+
+            axes[idx].set_ylim(
+                10**(log_y_min - margin),
+                10**(log_y_max + margin)
+            )
+
+            log_ticks = np.linspace(log_y_min, log_y_max, 5)
+            tick_values = [10**x for x in log_ticks]
+
+            axes[idx].yaxis.set_major_locator(
+                ticker.FixedLocator(tick_values))
+            axes[idx].yaxis.set_minor_locator(ticker.NullLocator())
+
+            axes[idx].yaxis.set_major_formatter(ticker.FuncFormatter(
+                lambda x, p: f'{int(x):,}' if x >= 1 else f'{x:.2e}'
+            ))
 
         axes[idx].legend()
-        axes[idx].grid(True)
+        axes[idx].grid(True, which='major', alpha=0.3)
 
     plt.tight_layout()
-    plt.savefig("../plots/fig_1.png")
-    plt.show()
+    plt.savefig(f"../plots/{filename}")
+    plt.close()
+
+    print(f"  Wykres zapisany: ../plots/{filename}")
+
+
+def analyze_csv_results(
+        results_dir: str = "../results", verbose: bool = True) -> dict:
+    results = {}
+
+    csv_files = sorted(Path(results_dir).glob("*.csv"))
+
+    for csv_file in csv_files:
+        filename = csv_file.stem
+
+        df = pd.read_csv(csv_file)
+
+        best_fitness = df['best_fitness'].max()
+
+        best_fitness_per_run = df.groupby(
+            'run_id')['best_fitness'].max()
+        avg_best_fitness = best_fitness_per_run.mean()
+
+        results[filename] = {
+            'best_fitness': best_fitness,
+            'avg_best_fitness': avg_best_fitness
+        }
+
+        if verbose:
+            print(f"\n{filename}:")
+            print(f"  Best fitness: {best_fitness:,.0f}")
+            print(f"  Avg best fitness: {avg_best_fitness:,.2f}")
+            print(f"  Number of runs: {len(best_fitness_per_run)}")
+
+    return results
+
+
+def find_best_worst_by_prefix(results: dict) -> dict:
+    tour_results = {
+        k: v for k,
+        v in results.items() if k.startswith('Tour')}
+    roul_results = {
+        k: v for k,
+        v in results.items() if k.startswith('Roul')}
+
+    tour_best = max(
+        tour_results.items(),
+        key=lambda x: x[1]['best_fitness'])
+    tour_worst = min(
+        tour_results.items(),
+        key=lambda x: x[1]['best_fitness'])
+
+    roul_best = max(
+        roul_results.items(),
+        key=lambda x: x[1]['best_fitness'])
+    roul_worst = min(
+        roul_results.items(),
+        key=lambda x: x[1]['best_fitness'])
+
+    selected = {
+        'Tour_Best': (tour_best[0], tour_best[1]),
+        'Tour_Worst': (tour_worst[0], tour_worst[1]),
+        'Roul_Best': (roul_best[0], roul_best[1]),
+        'Roul_Worst': (roul_worst[0], roul_worst[1])
+    }
+
+    print(f"\n\n{'=' * 80}")
+    print("WYBRANE KONFIGURACJE DO WIZUALIZACJI")
+    print(f"{'=' * 80}")
+
+    for label, (config, data) in selected.items():
+        print(f"\n{label}:")
+        print(f"  Konfiguracja: {config}")
+        print(f"  Best fitness: {data['best_fitness']:,.0f}")
+        print(f"  Avg best fitness: {data['avg_best_fitness']:,.2f}")
+
+    return selected
+
+
+def plot_selected_configurations(selected: dict) -> None:
+    os.makedirs('../plots', exist_ok=True)
+
+    max_data = {}
+    avg_data = {}
+
+    for label, (_, data_stats) in selected.items():
+        short_label = label
+        max_data[short_label] = data_stats['best_fitness']
+        avg_data[short_label] = data_stats['avg_best_fitness']
+
+    bar_plot(
+        max_data=max_data,
+        avg_data=avg_data,
+        title="Porównanie najlepszych i najgorszych konfiguracji",
+        xlabel="Konfiguracja",
+        ylabel="Fitness",
+        filename="comparison_bar_plot.png"
+    )
+
+    print(f"\nWykres słupkowy zapisany: ../plots/comparison_bar_plot.png")
+
+    print("\n" + "=" * 80)
+    print("GENEROWANIE WYKRESÓW OVER-TIME DLA WYBRANYCH KONFIGURACJI")
+    print(f"{'=' * 80}")
+
+    for label, (config_name, _) in selected.items():
+        print(f"\nGenerowanie wykresu dla {label} ({config_name})...")
+
+        plot_over_time(
+            csv_filename=config_name,
+            filename=f"{label}_over_time.png",
+            config_name=config_name
+        )
 
 
 def main():
-    data_csv = read_data_csv('../data/problem plecakowy'
-                             ' dane CSV tabulatory.csv')
+    print("=" * 80)
+    print("ANALIZA WYNIKÓW Z PLIKÓW CSV")
+    print("=" * 80)
 
-    plot_1(
-        data=data_csv,
-        selection_strategy=TournamentSelection(tournament_size=3),
-        cross_strategy=OnePointCrossover(),
-        mutation_strategy=BitFlipMutation(),
-        parameters={
-            "cross_probability": 0.8,
-            "mutation_probability": 0.01,
-            "population_size": 100,
-            "iterations": 1000,
-        }
-    )
+    results = analyze_csv_results("../results", verbose=True)
+
+    print(f"\n\n{'=' * 60}")
+    print(f"Podsumowanie: przeanalizowano {len(results)} plików")
+    print("=" * 60)
+
+    selected = find_best_worst_by_prefix(results)
+
+    plot_selected_configurations(selected)
+
+    print("\n" + "=" * 60)
+    print("ZAKOŃCZONO - Wszystkie wykresy zapisane w katalogu ../plots/")
+    print("=" * 80)
+    print("\nWygenerowane pliki:")
+    print("  1. comparison_bar_plot.png - wykres słupkowy porównawczy")
+    print("  2. Tour_Best_over_time.png - wykres over-time dla najlepszej konfiguracji Tournament")
+    print("  3. Tour_Worst_over_time.png - wykres over-time dla najgorszej konfiguracji Tournament")
+    print("  4. Roul_Best_over_time.png - wykres over-time dla najlepszej konfiguracji Roulette")
+    print("  5. Roul_Worst_over_time.png - wykres over-time dla najgorszej konfiguracji Roulette")
+    print("=" * 80 + "\n")
 
 
 if __name__ == "__main__":
