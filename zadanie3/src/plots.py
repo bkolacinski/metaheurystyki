@@ -111,20 +111,20 @@ def plot_over_time(csv_filename: str,
     metrics = {
         0: {
             'data': [h['best_fitness'] for h in history],
-            'label': 'Max Fitness',
-            'title': 'Best Fitness',
+            'label': 'Najlepszy Fitness',
+            'title': 'Najlepszy Fitness',
             'color': 'green'
         },
         1: {
             'data': [h['avg_fitness'] for h in history],
-            'label': 'Avg Fitness',
-            'title': 'Average Fitness',
+            'label': 'Średni Fitness',
+            'title': 'Średni Fitness',
             'color': 'blue'
         },
         2: {
             'data': [h['worst_fitness'] for h in history],
-            'label': 'Min Fitness',
-            'title': 'Worst Fitness',
+            'label': 'Najgorszy Fitness',
+            'title': 'Najgorszy Fitness',
             'color': 'red'
         }
     }
@@ -134,7 +134,7 @@ def plot_over_time(csv_filename: str,
     for idx, metric in metrics.items():
         axes[idx].plot(iterations, metric['data'],
                        label=metric['label'], color=metric['color'])
-        axes[idx].set_xlabel('Iteration')
+        axes[idx].set_xlabel('Iteracja')
         axes[idx].set_ylabel('Fitness')
         axes[idx].set_title(f"{metric['title']} - {config_name}")
         axes[idx].set_yscale('log')
@@ -199,9 +199,9 @@ def analyze_csv_results(
 
         if verbose:
             print(f"\n{filename}:")
-            print(f"  Best fitness: {best_fitness:,.0f}")
-            print(f"  Avg best fitness: {avg_best_fitness:,.2f}")
-            print(f"  Number of runs: {len(best_fitness_per_run)}")
+            print(f"Best fitness: {best_fitness:,.0f}")
+            print(f"Avg best fitness: {avg_best_fitness:,.2f}")
+            print(f"Number of runs: {len(best_fitness_per_run)}")
 
     return results
 
@@ -241,9 +241,9 @@ def find_best_worst_by_prefix(results: dict) -> dict:
 
     for label, (config, data) in selected.items():
         print(f"\n{label}:")
-        print(f"  Konfiguracja: {config}")
-        print(f"  Best fitness: {data['best_fitness']:,.0f}")
-        print(f"  Avg best fitness: {data['avg_best_fitness']:,.2f}")
+        print(f"Konfiguracja: {config}")
+        print(f"Best fitness: {data['best_fitness']:,.0f}")
+        print(f"Avg best fitness: {data['avg_best_fitness']:,.2f}")
 
     return selected
 
@@ -284,12 +284,132 @@ def plot_selected_configurations(selected: dict) -> None:
         )
 
 
+def parse_filename(filename: str) -> dict:
+    parts = filename.replace('.csv', '').split('_')
+
+    params = {}
+    for part in parts:
+        if part.startswith('cp'):
+            params['cross_prob'] = float(part[2:])
+        elif part.startswith('mp'):
+            params['mutation_prob'] = float(part[2:])
+        elif part.startswith('pop'):
+            params['population'] = int(part[3:])
+        elif part.startswith('it'):
+            params['iterations'] = int(part[2:])
+
+    if parts[0] in ['Tour', 'Roul']:
+        params['selection'] = parts[0]
+    if len(parts) > 1 and parts[1] in ['1P', '2P']:
+        params['crossover'] = parts[1]
+
+    return params
+
+
+def plot_parameter_influence(results_dir: str = "../results") -> None:
+    print("\n" + "=" * 80)
+    print("ANALIZA WPŁYWU PARAMETRÓW")
+    print("=" * 80)
+
+    csv_files = sorted(Path(results_dir).glob("*.csv"))
+
+    all_data = []
+    for csv_file in csv_files:
+        df = pd.read_csv(csv_file)
+        params = parse_filename(csv_file.name)
+
+        best_fitness_per_run = df.groupby('run_id')['best_fitness'].max()
+
+        for fitness in best_fitness_per_run:
+            all_data.append({
+                'cross_prob': params.get('cross_prob'),
+                'mutation_prob': params.get('mutation_prob'),
+                'population': params.get('population'),
+                'best_fitness': fitness
+            })
+
+    df_all = pd.DataFrame(all_data)
+
+    print("\nGenerowanie wykresu: wpływ Pc...")
+    pc_values = sorted(df_all['cross_prob'].unique())
+    pc_data = [df_all[df_all['cross_prob'] == pc]['best_fitness'].values for pc in pc_values]
+
+    fig, ax = plt.subplots(figsize=(10, 7))
+    ax.boxplot(pc_data, tick_labels=[f'{pc:.1f}' for pc in pc_values])
+    ax.set_xlabel('Prawdopodobieństwo krzyżowania (Pc)', fontsize=14)
+    ax.set_ylabel('Fitness', fontsize=14)
+    ax.set_title('Wpływ prawdopodobieństwa krzyżowania na wyniki', fontsize=16, fontweight='bold')
+    ax.grid(True, alpha=0.3, axis='y')
+    ax.yaxis.set_major_formatter(ticker.FuncFormatter(lambda x, p: f'{int(x):,}'))
+
+    plt.tight_layout()
+    plt.savefig('../plots/influence_cross_probability.png', dpi=300)
+    plt.close()
+    print("Zapisano: ../plots/influence_cross_probability.png")
+
+    print("Generowanie wykresu: wpływ Pm...")
+    pm_values = sorted(df_all['mutation_prob'].unique())
+    pm_data = [df_all[df_all['mutation_prob'] == pm]['best_fitness'].values for pm in pm_values]
+
+    fig, ax = plt.subplots(figsize=(10, 7))
+    ax.boxplot(pm_data, tick_labels=[f'{pm:.2f}' for pm in pm_values])
+    ax.set_xlabel('Prawdopodobieństwo mutacji (Pm)', fontsize=14)
+    ax.set_ylabel('Fitness', fontsize=14)
+    ax.set_title('Wpływ prawdopodobieństwa mutacji na wyniki', fontsize=16, fontweight='bold')
+    ax.grid(True, alpha=0.3, axis='y')
+    ax.yaxis.set_major_formatter(ticker.FuncFormatter(lambda x, p: f'{int(x):,}'))
+
+    plt.tight_layout()
+    plt.savefig('../plots/influence_mutation_probability.png', dpi=300)
+    plt.close()
+    print("Zapisano: ../plots/influence_mutation_probability.png")
+
+    print("Generowanie wykresu: wpływ N...")
+    pop_values = sorted(df_all['population'].unique())
+    pop_data = [df_all[df_all['population'] == pop]['best_fitness'].values for pop in pop_values]
+
+    fig, ax = plt.subplots(figsize=(10, 7))
+    ax.boxplot(pop_data, tick_labels=[f'{pop}' for pop in pop_values])
+    ax.set_xlabel('Wielkość populacji (N)', fontsize=14)
+    ax.set_ylabel('Fitness', fontsize=14)
+    ax.set_title('Wpływ wielkości populacji na wyniki', fontsize=16, fontweight='bold')
+    ax.grid(True, alpha=0.3, axis='y')
+    ax.yaxis.set_major_formatter(ticker.FuncFormatter(lambda x, p: f'{int(x):,}'))
+
+    plt.tight_layout()
+    plt.savefig('../plots/influence_population_size.png', dpi=300)
+    plt.close()
+    print("Zapisano: ../plots/influence_population_size.png")
+
+    print("\n" + "-" * 80)
+    print("STATYSTYKI WPŁYWU PARAMETRÓW:")
+    print("-" * 80)
+
+    print("\n1. Prawdopodobieństwo krzyżowania (Pc):")
+    for pc in pc_values:
+        data = df_all[df_all['cross_prob'] == pc]['best_fitness']
+        print(f"Pc={pc:.1f}: średnia={data.mean():,.0f}, mediana={data.median():,.0f}, "
+              f"std={data.std():,.0f}, min={data.min():,.0f}, max={data.max():,.0f}")
+
+    print("\n2. Prawdopodobieństwo mutacji (Pm):")
+    for pm in pm_values:
+        data = df_all[df_all['mutation_prob'] == pm]['best_fitness']
+        print(f"Pm={pm:.2f}: średnia={data.mean():,.0f}, mediana={data.median():,.0f}, "
+              f"std={data.std():,.0f}, min={data.min():,.0f}, max={data.max():,.0f}")
+
+    print("\n3. Wielkość populacji (N):")
+    for pop in pop_values:
+        data = df_all[df_all['population'] == pop]['best_fitness']
+        print(f"N={pop}: średnia={data.mean():,.0f}, mediana={data.median():,.0f}, "
+              f"std={data.std():,.0f}, min={data.min():,.0f}, max={data.max():,.0f}")
+
+
 def main():
     print("=" * 80)
     print("ANALIZA WYNIKÓW Z PLIKÓW CSV")
     print("=" * 80)
 
-    results = analyze_csv_results("../results", verbose=True)
+    results = analyze_csv_results("../results")
 
     print(f"\n\n{'=' * 60}")
     print(f"Podsumowanie: przeanalizowano {len(results)} plików")
@@ -298,6 +418,8 @@ def main():
     selected = find_best_worst_by_prefix(results)
 
     plot_selected_configurations(selected)
+
+    plot_parameter_influence("../results")
 
     print("\n" + "=" * 60)
     print("ZAKOŃCZONO - Wszystkie wykresy zapisane w katalogu ../plots/")
@@ -313,6 +435,12 @@ def main():
           "wykres over-time dla najlepszej konfiguracji Roulette")
     print("  5. Roul_Worst_over_time.png - "
           "wykres over-time dla najgorszej konfiguracji Roulette")
+    print("  6. influence_cross_probability.png - "
+          "box plot wpływu prawdopodobieństwa krzyżowania (Pc)")
+    print("  7. influence_mutation_probability.png - "
+          "box plot wpływu prawdopodobieństwa mutacji (Pm)")
+    print("  8. influence_population_size.png - "
+          "box plot wpływu wielkości populacji (N)")
     print("=" * 80 + "\n")
 
 

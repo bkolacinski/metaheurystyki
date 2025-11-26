@@ -61,19 +61,12 @@ def main():
             items=data_csv
         )
 
-        best_result = {
-            "best_fitness": 0,
-            "best_individual": None
-        }
-
-        worst_result = {
-            "worst_fitness": float('inf'),
-            "worst_individual": None
-        }
-
-        avg_result_value = 0.0
         exec_time = 0.0
 
+        best_fitness_values = []
+        best_individuals = []
+        worst_fitness_values = []
+        worst_individuals = []
         all_runs_history = []
 
         for i in range(5):
@@ -90,24 +83,49 @@ def main():
                 entry['execution_time'] = result['execution_time']
             all_runs_history.extend(history)
 
-            if result["best_fitness"] > best_result["best_fitness"]:
-                best_result["best_fitness"] = result["best_fitness"]
-                best_result["best_individual"] = result["best_individual"]
-            if result["best_fitness"] < worst_result["worst_fitness"]:
-                worst_result["worst_fitness"] = result["best_fitness"]
-                worst_result["worst_individual"] = result["best_individual"]
-            avg_result_value += result["best_fitness"]
+            best_fitness_values.append(result["best_fitness"])
+            best_individuals.append(result["best_individual"])
+            worst_fitness_values.append(result["worst_fitness"])
+            worst_individuals.append(result["worst_individual"])
             exec_time += result["execution_time"]
 
-        # Save history to CSV
         pd.DataFrame(all_runs_history).to_csv(filepath, index=False)
 
-        print(f'Najlepszy wynik: {best_result["best_fitness"]} - '
-              f'({best_result["best_individual"]})\n'
-              f'Najgorszy wynik: {worst_result["worst_fitness"]} - '
-              f'({worst_result["worst_individual"]})\n'
-              f'Średni wynik: {avg_result_value / 5}\n'
-              f'Czas wykonania 5 uruchomień: {exec_time:.3f} sekund\n')
+        stats = pd.Series(best_fitness_values)
+
+        best_idx = best_fitness_values.index(max(best_fitness_values))
+        best_solution = best_individuals[best_idx]
+        best_value = best_fitness_values[best_idx]
+
+        selected_items_best = [i for i, gene in enumerate(best_solution) if gene == 1]
+        total_weight_best = sum(data_csv.iloc[i]["Waga"] for i in selected_items_best)
+        items_names_best = [data_csv.iloc[i]["Nazwa"] for i in selected_items_best]
+
+        worst_idx = worst_fitness_values.index(min(worst_fitness_values))
+        worst_solution = worst_individuals[worst_idx]
+        worst_value = worst_fitness_values[worst_idx]
+
+        selected_items_worst = [i for i, gene in enumerate(worst_solution) if gene == 1]
+        total_weight_worst = sum(data_csv.iloc[i]["Waga"] for i in selected_items_worst)
+        items_names_worst = [data_csv.iloc[i]["Nazwa"] for i in selected_items_worst]
+
+        print(f'Średnia: {stats.mean():.0f}\n'
+              f'Mediana: {stats.median():.0f}\n'
+              f'Min: {stats.min():.0f}\n'
+              f'Max: {stats.max():.0f}\n'
+              f'Odchylenie standardowe: {stats.std():.0f}\n'
+              f'Czas wykonania 5 uruchomień: {exec_time:.3f}s '
+              f'(średni czas na uruchomienie: {exec_time/5:.3f}s)\n'
+              f'\nNajlepsze rozwiązanie:\n'
+              f'Wartość plecaka: {best_value:.0f}\n'
+              f'Waga plecaka: {total_weight_best:.0f} / {ga.MAX_WEIGHT}\n'
+              f'Liczba przedmiotów: {len(selected_items_best)}\n'
+              f'Zawartość: {", ".join(items_names_best)}\n'
+              f'\nNajgorsze rozwiązanie:\n'
+              f'Wartość plecaka: {worst_value:.0f}\n'
+              f'Waga plecaka: {total_weight_worst:.0f} / {ga.MAX_WEIGHT}\n'
+              f'Liczba przedmiotów: {len(selected_items_worst)}\n'
+              f'Zawartość: {", ".join(items_names_worst)}\n')
 
 
 if __name__ == "__main__":

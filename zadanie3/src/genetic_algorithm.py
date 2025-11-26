@@ -85,6 +85,8 @@ class GeneticAlgorithm:
 
         best_overall_individual = None
         best_overall_fitness = -1
+        worst_overall_individual = None
+        worst_overall_fitness = float('inf')
 
         for i in range(iterations):
             fitness_values = self.calculate_fitness(population)
@@ -92,8 +94,17 @@ class GeneticAlgorithm:
             current_best_fitness = max(fitness_values)
             if current_best_fitness > best_overall_fitness:
                 best_overall_fitness = current_best_fitness
-                best_individual_index = fitness_values.index(current_best_fitness)
+                best_individual_index = fitness_values.index(
+                    current_best_fitness)
                 best_overall_individual = population[best_individual_index]
+
+            valid_fitness = [(f, idx) for idx, f in enumerate(fitness_values) if f > 0]
+            if valid_fitness:
+                current_worst_fitness = min(valid_fitness, key=lambda x: x[0])[0]
+                if current_worst_fitness < worst_overall_fitness:
+                    worst_overall_fitness = current_worst_fitness
+                    worst_individual_index = min(valid_fitness, key=lambda x: x[0])[1]
+                    worst_overall_individual = population[worst_individual_index]
 
             history.append(
                 {
@@ -121,6 +132,8 @@ class GeneticAlgorithm:
         final_solution = {
             "best_individual": best_overall_individual,
             "best_fitness": best_overall_fitness,
+            "worst_individual": worst_overall_individual,
+            "worst_fitness": worst_overall_fitness,
             "execution_time": end_time - start_time
         }
         return final_solution, history
