@@ -11,6 +11,7 @@
 \usepackage{xcolor}
 \usepackage{booktabs}
 \usepackage{hyperref}
+\usepackage{float}
 
 \definecolor{codegreen}{rgb}{0,0.6,0}
 \definecolor{codegray}{rgb}{0.5,0.5,0.5}
@@ -68,8 +69,9 @@
             \textbf{Użyte technologie} & Python 3.13 \\
             \midrule
             \textbf{Użyte biblioteki} & \begin{tabular}[t]{@{}r@{}}
-                przykladowa \\
-                tresc
+                random, functools, \\
+                time, numpy, pandas, \\
+                matplotlib.pyplot
             \end{tabular} \\
             \bottomrule
         \end{tabular}
@@ -83,80 +85,211 @@
     \newpage
 
     \section{Opis zasad działania algorytmu}
+    \subsection{Opis problemu plecakowego}
+    
+    Problem plecakowy (ang. \textit{Knapsack Problem}) to jeden z klasycznych problemów optymalizacji kombinatorycznej. 
+    Dany jest zbiór przedmiotów, z których każdy ma określoną wagę oraz wartość. 
+    Celem jest wybór takiego podzbioru przedmiotów, aby suma ich wartości była jak największa, 
+    jednocześnie nie przekraczając żądanej maksymalnej wagi plecaka.
+
     \subsection{Opis algorytmu genetycznego}
 
-    TODO
-
-    \subsection{Założenia podstawowe}
-
-    TODO
+    Algorytm genetyczny to metaheurystyka inspirowana biologicznym procesem ewolucji naturalnej.
+    Działa on na populacji osobników, z których każdy reprezentuje potencjalne rozwiązanie problemu.
+    Proces optymalizacji przebiega w cyklach zwanych epokami (lub generacjami), w których następują:
+    \begin{itemize}
+        \item \textbf{Selekcja}: Wybór najlepiej przystosowanych osobników do reprodukcji.
+        \item \textbf{Krzyżowanie}: Łączenie cech dwóch osobników (rodziców) w celu stworzenia potomstwa.
+        \item \textbf{Mutacja}: Losowa zmiana w kodzie genetycznym potomstwa, wprowadzająca różnorodność.
+        \item \textbf{Ocena (Fitness)}: Obliczenie wartości funkcji przystosowania dla każdego osobnika.
+    \end{itemize}
+    Algorytm dąży do znalezienia osobnika o najwyższej wartości funkcji przystosowania.
 
     \subsection{Opis implementacji rozwiązania}
 
-    TODO \texttt{self.func}
+    Logika algorytmu genetycznego została zaimplementowana w klasie \texttt{GeneticAlgorithm}.
+    Rozwiązanie (osobnik) jest reprezentowane jako lista liczb całkowitych (0 lub 1), gdzie 1 oznacza zabranie przedmiotu, a 0 jego pozostawienie.
+    Długość listy odpowiada liczbie wszystkich dostępnych przedmiotów.
 
-    \begin{lstlisting}[language=Python, caption={TODO}]
-    pass
+    \begin{lstlisting}[language=Python, caption={Inicjalizacja klasy GeneticAlgorithm}]
+    class GeneticAlgorithm:
+        MAX_WEIGHT = 6404180
+
+        def __init__(self, selection_strategy, cross_strategy, 
+                     mutation_strategy, items: list[dict]):
+            self.selection_strategy = selection_strategy
+            self.cross_strategy = cross_strategy
+            self.mutation_strategy = mutation_strategy
+            self.items = items
+            self.weights = self.items["Waga"].values
+            self.values = self.items["Wartosc"].values
     \end{lstlisting}
+
+    Funkcja przystosowania (\texttt{calculate\_fitness\_indiv}) oblicza sumaryczną wartość przedmiotów w plecaku.
+    Jeśli waga przedmiotów przekracza \texttt{MAX\_WEIGHT}, funkcja zwraca 0, co eliminuje niepoprawne rozwiązania z procesu ewolucji.
+
+    \begin{lstlisting}[language=Python, caption={Obliczanie funkcji przystosowania}]
+    @cache
+    def calculate_fitness_indiv(self, individual) -> float:
+        total_weight = sum(
+            gene * weight for gene, weight in zip(individual, self.weights)
+        )
+        total_value = sum(gene * value for gene, value in
+                          zip(individual, self.values))
+
+        if total_weight > self.MAX_WEIGHT:
+            return 0.0
+        else:
+            return int(total_value)
+    \end{lstlisting}
+
+    Główna pętla algorytmu (\texttt{run}) wykonuje zadaną liczbę iteracji. W każdej iteracji następuje ocena populacji,
+    wybór rodziców, krzyżowanie i mutacja. Algorytm śledzi najlepsze znalezione rozwiązanie.
+
+    Zaimplementowano dwie strategie selekcji:
+    \begin{itemize}
+        \item \textbf{Turniejowa} (\texttt{TournamentSelection}): Losuje grupę osobników i wybiera najlepszego z nich.
+        \item \textbf{Ruletkowa} (\texttt{RouletteWheelSelection}): Prawdopodobieństwo wyboru osobnika jest proporcjonalne do jego funkcji przystosowania.
+    \end{itemize}
+
+    Zaimplementowano dwie strategie krzyżowania:
+    \begin{itemize}
+        \item \textbf{Jednopunktowe} (\texttt{OnePointCrossover}): Losuje punkt podziału i wymienia fragmenty rodziców.
+        \item \textbf{Dwupunktowe} (\texttt{TwoPointCrossover}): Losuje dwa punkty i wymienia fragment pomiędzy nimi.
+    \end{itemize}
+
+    Jako strategię mutacji zastosowano \texttt{BitFlipMutation}, która z zadanym prawdopodobieństwem odwraca bit (0 na 1 lub 1 na 0) w genotypie osobnika.
 
     \subsection{Instrukcja uruchomienia programu}
 
-    TODO \texttt{python run.py}
+    Program uruchamia się poprzez wywołanie pliku \texttt{main.py}, np. komendą:
+    \begin{center}
+        \texttt{python main.py}
+    \end{center}
+    
+    Program jest interaktywny i prosi użytkownika o:
+    \begin{enumerate}
+        \item Wybór strategii selekcji (Turniejowa/Ruletkowa).
+        \item Wybór strategii krzyżowania (Jednopunktowe/Dwupunktowe).
+        \item Podanie parametrów: wielkość populacji, liczba iteracji, prawdopodobieństwo krzyżowania, prawdopodobieństwo mutacji.
+    \end{enumerate}
+    Po zakończeniu działania wyświetlane są: najlepsze znalezione rozwiązanie (wartość, waga, lista przedmiotów) oraz statystyki przebiegu.
 
+    W celu wygenerowania wszystkich eksperymentów opisanych w dalszej części sprawozdania, należy uruchomić skrypt:
+    \begin{center}
+        \texttt{python run\_experiments.py}
+    \end{center}
     \newpage
 
     \section{Eksperymenty i wyniki}
 
-    Dla każdej możliwej kombinacji parametrów (108 możliwości) algorytm został uruchomiony 5 razy w celu zredukowania losowości wyników. Przeprowadzone eksperymenty obejmowały następujące wartości parametrów:
-    \begin{itemize}
-        \item \textbf{Strategia selekcji} -- Ruletka, Turniej (rozmiar turnieju = 3),
-        \item \textbf{Strategia krzyżowania} -- Jednopunktowe, Dwupunktowe,
-        \item \textbf{Strategia mutacji} -- BitFlip,
-        \item \textbf{Prawdopodobieństwo krzyżowania} -- 0.6, 0.8, 1.0,
-        \item \textbf{Prawdopodobieństwo mutacji} -- 0.01, 0.05, 0.1,
-        \item \textbf{Wielkość populacji} -- 50, 100, 200,
-        \item \textbf{Liczba iteracji} -- 1000.
-    \end{itemize}
+    Przeprowadzono serię eksperymentów w celu zbadania wpływu parametrów algorytmu na jakość znajdowanych rozwiązań.
+    Dla każdej konfiguracji algorytm był uruchamiany wielokrotnie w celu uśrednienia wyników.
 
-    \begin{figure}[h!]
+    \subsection{Analiza wpływu parametrów algorytmu}
+
+    \subsubsection{Wpływ wielkości populacji}
+    
+    Wielkość populacji jest kluczowym parametrem wpływającym na różnorodność genetyczną.
+    Z przeprowadzonych testów (Rys. \ref{fig:influence_population}) wynika, że większa populacja zazwyczaj prowadzi do lepszych wyników końcowych (wyższa wartość funkcji przystosowania),
+    ponieważ algorytm przeszukuje większy obszar przestrzeni rozwiązań. Wiąże się to jednak z dłuższym czasem obliczeń.
+
+    \begin{figure}[H]
         \centering
-        \includegraphics[width=0.8\textwidth]{../plots/comparison_bar_plot.png}
-        \caption{Porównanie wyników dla najgorszego i najlepszego uruchomienia dla danych strategii selekcji.}
+        \includegraphics[width=0.85\textwidth]{../plots/influence_population_size.png}
+        \caption{Wpływ wielkości populacji na jakość rozwiązania.}
+        \label{fig:influence_population}
+    \end{figure}
+
+    \subsubsection{Wpływ prawdopodobieństwa krzyżowania}
+
+    Krzyżowanie pozwala na łączenie dobrych cech rodziców. 
+    Wykres (Rys. \ref{fig:influence_cross}) pokazuje zależność między prawdopodobieństwem krzyżowania a jakością wyniku.
+    W naszym przypadku różnica w wynikach dla różnych wartości prawdopodobieństwa krzyżowania jest niewielka, nie można mówić o żadnej zależności.
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{../plots/influence_cross_probability.png}
+        \caption{Wpływ prawdopodobieństwa krzyżowania na jakość rozwiązania.}
+        \label{fig:influence_cross}
+    \end{figure}
+
+    \subsubsection{Wpływ prawdopodobieństwa mutacji}
+
+    Mutacja wprowadza nowe geny do populacji, zapobiegając przedwczesnej zbieżności.
+    Eksperymenty (Rys. \ref{fig:influence_mutation}) wskazują, że prawdopodobieństwo mutacji nie ma dużego wpływu na jakość rozwiązania.
+    Najlepsze wartości osiągnięto dla prawdopodobieństwa mutacji 0.1, jednak różnice są minimalne.
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{../plots/influence_mutation_probability.png}
+        \caption{Wpływ prawdopodobieństwa mutacji na jakość rozwiązania.}
+        \label{fig:influence_mutation}
+    \end{figure}
+
+    \newpage
+    \subsection{Porównanie strategii selekcji}
+
+    Porównano skuteczność dwóch strategii selekcji: ruletkowej oraz turniejowej.
+    Rysunek \ref{fig:wykres_slupkowy} przedstawia zestawienie wyników (najlepszych i najgorszych z serii uruchomień) dla obu metod.
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{../plots/comparison_bar_plot.png}
+        \caption{Porównanie wyników dla najgorszego i najlepszego uruchomienia dla badanych strategii selekcji.}
         \label{fig:wykres_slupkowy}
     \end{figure}
 
-    \begin{figure}[h!]
+    Poniższe wykresy przedstawiają przebieg procesu optymalizacji w czasie (względem iteracji) dla obu strategii.
+    Można zauważyć, jak zmieniały się: najlepsza wartość funkcji przystosowania (Best), średnia (Avg) oraz najgorsza (Worst) w populacji.
+
+    \subsubsection{Selekcja Ruletkowa}
+
+    \begin{figure}[H]
         \centering
-        \includegraphics[width=0.8\textwidth]{../plots/Roul_Best_over_time.png}
-        \caption{Wykres najlepszego, średniego i najgorszego wyniku w zależności od liczby iteracji dla strategii selekcji ruletkowej (najlepszy otrzymany wynik).}
+        \includegraphics[width=0.85\textwidth]{../plots/Roul_Best_over_time.png}
+        \caption{Przebieg optymalizacji dla selekcji ruletkowej (najlepszy uzyskany wynik).}
         \label{fig:wykres_ruletka_najlepszy}
     \end{figure}
 
-    \begin{figure}[h!]
+    \begin{figure}[H]
         \centering
-        \includegraphics[width=0.8\textwidth]{../plots/Roul_Worst_over_time.png}
-        \caption{Wykres najlepszego, średniego i najgorszego wyniku w zależności od liczby iteracji dla strategii selekcji ruletkowej (najgorszy otrzymany wynik).}
+        \includegraphics[width=0.85\textwidth]{../plots/Roul_Worst_over_time.png}
+        \caption{Przebieg optymalizacji dla selekcji ruletkowej (najgorszy uzyskany wynik).}
         \label{fig:wykres_ruletka_najgorszy}
     \end{figure}
 
-    \begin{figure}[h!]
+    \newpage
+    \subsubsection{Selekcja Turniejowa}
+
+    \begin{figure}[H]
         \centering
-        \includegraphics[width=0.8\textwidth]{../plots/Tour_Best_over_time.png}
-        \caption{Wykres najlepszego, średniego i najgorszego wyniku w zależności od liczby iteracji dla strategii selekcji turniejowej (najlepszy otrzymany wynik).}
+        \includegraphics[width=0.85\textwidth]{../plots/Tour_Best_over_time.png}
+        \caption{Przebieg optymalizacji dla selekcji turniejowej (najlepszy uzyskany wynik).}
         \label{fig:wykres_turniej_najlepszy}
     \end{figure}
 
-    \begin{figure}[h!]
+    \begin{figure}[H]
         \centering
-        \includegraphics[width=0.8\textwidth]{../plots/Tour_Worst_over_time.png}
-        \caption{Wykres najlepszego, średniego i najgorszego wyniku w zależności od liczby iteracji dla strategii selekcji turniejowej (najgorszy otrzymany wynik).}
+        \includegraphics[width=0.85\textwidth]{../plots/Tour_Worst_over_time.png}
+        \caption{Przebieg optymalizacji dla selekcji turniejowej (najgorszy uzyskany wynik).}
         \label{fig:wykres_turniej_najgorszy}
     \end{figure}
 
     \newpage
 
-    \section{Analiza wyników i wnioski}
+    \section{Wnioski}
 
-    TODO
-
+    Na podstawie przeprowadzonych eksperymentów sformułowano następujące wnioski:
+    
+    \begin{itemize}
+        \item \textbf{Skuteczność algorytmu}: Algorytm genetyczny skutecznie znajduje rozwiązania problemu plecakowego o wysokiej wartości, zbliżone do optimum.
+        
+        \item \textbf{Wpływ populacji}: Większa populacja zwiększa szansę na znalezienie lepszego rozwiązania, ale wydłuża czas obliczeń. Należy dobrać kompromisową wartość (np. 100-200 osobników).
+        
+        \item \textbf{Parametry ewolucyjne}: Prawdopodobieństwo krzyżowania i mutacji miały stosunkowo niewielki wpływ na jakość końcowego rozwiązania w badanym zakresie. Zaleca się jednak stosowanie umiarkowanych wartości w celu zachowania różnorodności genetycznej.
+        
+        \item \textbf{Strategia selekcji}: Obie strategie (ruletkowa i turniejowa) pozwalają osiągnąć dobre wyniki. Selekcja turniejowa często powoduje szybszą zbieżność, ale też szybszą utratę różnorodności (utknięcia w lokalnym optimum). Selekcja ruletkowa daje większą szansę słabszym osobnikom, co podtrzymuje różnorodność.
+        
+        \item \textbf{Zbieżność}: Wykresy przebiegu pokazują, że średnia wartość przystosowania w populacji rośnie wraz z kolejnymi iteracjami, a następnie się stabilizuje, co potwierdza prawidłowe działanie mechanizmów ewolucyjnych.
+    \end{itemize}
 \end{document}
