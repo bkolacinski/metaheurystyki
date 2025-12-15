@@ -20,8 +20,8 @@ class ACO:
             [1.0] * self.num_attractions for _ in range(self.num_attractions)
         ]
 
-        self.best_path = []
-        self.best_path_cost = float('inf')
+        self.global_best_path = []
+        self.global_best_cost = float('inf')
         self.history_best = []
 
     @timer
@@ -65,4 +65,20 @@ class ACO:
     def _update_pheromones(self, ants):
         evaporation_factor = 1.0 - self.rho
 
-        raise NotImplementedError()
+        # Evaporate pheromones on all edges
+        for i in range(self.num_attractions):
+            for j in range(self.num_attractions):
+                self.pheromones[i][j] *= evaporation_factor
+
+        # Deposit pheromones based on ant paths
+        for ant in ants:
+            path = ant.get_visited()
+            path_length = ant.get_path_length()
+
+            if path_length > 0:
+                deposit = 1.0 / path_length
+                for i in range(len(path) - 1):
+                    from_node = path[i]
+                    to_node = path[i + 1]
+                    self.pheromones[from_node][to_node] += deposit
+                    self.pheromones[to_node][from_node] += deposit

@@ -1,0 +1,21 @@
+# Results and plots (generated during experiments)
+results/
+plots/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE settings
+.idea/
+.vscode/
+
+# LaTeX build files
+sprawozdanie/*.aux
+sprawozdanie/*.log
+sprawozdanie/*.out
+sprawozdanie/*.toc
+sprawozdanie/*.synctex.gz
+sprawozdanie/*.fdb_latexmk
+sprawozdanie/*.fls

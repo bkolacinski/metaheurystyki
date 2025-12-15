@@ -1,0 +1,434 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[polish]{babel}
+\usepackage[a4paper, margin=3cm]{geometry}
+\usepackage{array}
+\usepackage{tocloft}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{float}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2
+}
+
+\lstset{style=mystyle}
+\renewcommand{\lstlistingname}{Kod}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=black,
+    urlcolor=blue
+}
+
+\renewcommand{\cftsecleader}{\cftdotfill{\cftdotsep}}
+
+\begin{document}
+    \title{Metaheurystyki --- zadanie 4 \\
+    \large Algorytm mrówkowy (ACO) \\
+    \small GRUPA 3 --- piątek 10:15}
+    \date{\today}
+    \author{
+        Bartosz Kołaciński \\
+        251554
+        \and
+        Nikodem Nowak \\
+        251598
+    }
+    \maketitle
+
+    \vfill
+    \begin{center}
+        \begin{tabular}{lr}
+            \toprule
+            \textbf{Użyte technologie} & Python 3.13 \\
+            \midrule
+            \textbf{Użyte biblioteki} & \begin{tabular}[t]{@{}r@{}}
+                random, math, time, \\
+                numpy, pandas, \\
+                matplotlib.pyplot
+            \end{tabular} \\
+            \bottomrule
+        \end{tabular}
+    \end{center}
+    \vspace{1cm}
+
+    \newpage
+
+    \tableofcontents
+
+    \newpage
+
+    \section{Opis zasad działania algorytmu}
+    \subsection{Opis problemu}
+    
+    Problem polega na znalezieniu najkrótszej trasy odwiedzającej wszystkie atrakcje w wesołym miasteczku.
+    Jest to wariant problemu komiwojażera (ang. \textit{Traveling Salesman Problem}, TSP).
+    Dany jest zbiór punktów (atrakcji) o określonych współrzędnych na płaszczyźnie.
+    Celem jest znalezienie takiej kolejności odwiedzenia wszystkich punktów, aby łączna przebyta odległość była jak najmniejsza.
+
+    \subsection{Opis algorytmu mrówkowego (ACO)}
+
+    Algorytm mrówkowy (Ant Colony Optimization) to metaheurystyka inspirowana zachowaniem mrówek szukających pożywienia.
+    Mrówki w naturze komunikują się za pomocą feromonów --- substancji chemicznych pozostawianych na trasie.
+    Ścieżki z większą ilością feromonu są chętniej wybierane przez kolejne mrówki.
+    
+    \subsubsection{Pseudokod algorytmu}
+    
+    \begin{algorithm}[H]
+    \caption{Algorytm mrówkowy (ACO)}
+    \begin{algorithmic}[1]
+    \State \textbf{Inicjalizacja:}
+    \State Zainicjuj macierz feromonów $\tau_{ij} \gets 1.0$ dla wszystkich krawędzi $(i,j)$
+    \State Oblicz macierz odległości $d_{ij}$ dla wszystkich par wierzchołków
+    \For{$t = 1$ \textbf{to} $T$ (liczba iteracji)}
+        \State \textbf{Konstrukcja tras:}
+        \For{każda mrówka $k = 1, \ldots, m$}
+            \State Wybierz losowy wierzchołek startowy
+            \While{nie odwiedzono wszystkich wierzchołków}
+                \State Wybierz następny wierzchołek $j$ z prawdopodobieństwem:
+                \State $p_{ij} = \frac{[\tau_{ij}]^\alpha \cdot [\eta_{ij}]^\beta}{\sum_{l \in \text{dozwolone}} [\tau_{il}]^\alpha \cdot [\eta_{il}]^\beta}$
+                \State gdzie $\eta_{ij} = 1/d_{ij}$ (heurystyka odwrotności odległości)
+            \EndWhile
+            \State Oblicz długość trasy mrówki $k$
+        \EndFor
+        \State \textbf{Aktualizacja feromonów:}
+        \State Wyparowanie: $\tau_{ij} \gets (1-\rho) \cdot \tau_{ij}$ dla wszystkich $(i,j)$
+        \For{każda mrówka $k$}
+            \State Depozyt: $\tau_{ij} \gets \tau_{ij} + \Delta\tau_{ij}^k$ na trasie mrówki
+            \State gdzie $\Delta\tau_{ij}^k = 1/L_k$ ($L_k$ --- długość trasy mrówki $k$)
+        \EndFor
+        \State Zaktualizuj najlepsze znalezione rozwiązanie
+    \EndFor
+    \State \Return najlepsza znaleziona trasa
+    \end{algorithmic}
+    \end{algorithm}
+
+    \subsubsection{Parametry algorytmu}
+    \begin{itemize}
+        \item $m$ --- liczba mrówek w kolonii
+        \item $\alpha$ --- wpływ feromonów na wybór ścieżki
+        \item $\beta$ --- wpływ heurystyki (odwrotności odległości) na wybór ścieżki
+        \item $\rho$ --- współczynnik wyparowywania feromonów (0 $<$ $\rho$ $<$ 1)
+        \item $T$ --- liczba iteracji algorytmu
+        \item $p_{random}$ --- prawdopodobieństwo losowego wyboru (eksploracja)
+    \end{itemize}
+
+    \subsection{Opis implementacji rozwiązania}
+
+    \subsubsection{Reprezentacja grafu i obliczanie odległości}
+    
+    Graf jest reprezentowany jako macierz odległości euklidesowych między wszystkimi parami atrakcji.
+    Dane wejściowe są wczytywane z pliku tekstowego w formacie: \texttt{nrAtrakcji współrzędnaX współrzędnaY}.
+
+    \begin{lstlisting}[language=Python, caption={Wczytywanie danych i obliczanie macierzy odległości}]
+def read_data(filepath: str, separator: str = ' ') -> tuple:
+    from math import dist
+    import pandas as pd
+
+    data_csv = list(pd.read_csv(
+        filepath, sep=separator, skipinitialspace=True, header=None
+    ).to_records(index=False))
+    data_csv = [(int(row[0]), int(row[1]), int(row[2])) for row in data_csv]
+
+    data_length = len(data_csv)
+    distances_matrix = [[0.0] * data_length for _ in range(data_length)]
+    for i in range(data_length):
+        for j in range(data_length):
+            if i != j:
+                p1 = (data_csv[i][1], data_csv[i][2])
+                p2 = (data_csv[j][1], data_csv[j][2])
+                distances_matrix[i][j] = dist(p1, p2)
+
+    index_to_id_map = {i: rec[0] for i, rec in enumerate(data_csv)}
+    return data_csv, distances_matrix, index_to_id_map
+    \end{lstlisting}
+
+    \subsubsection{Reprezentacja trasy i kosztu}
+    
+    Trasa jest reprezentowana jako lista indeksów odwiedzonych wierzchołków.
+    Koszt (długość trasy) jest obliczany jako suma odległości między kolejnymi wierzchołkami.
+
+    \begin{lstlisting}[language=Python, caption={Obliczanie długości trasy}]
+def get_path_length(self) -> float:
+    length = 0.0
+    for i in range(len(self.visited) - 1):
+        l1 = self.visited[i]
+        l2 = self.visited[i + 1]
+        length += self.distances_matrix[l1][l2]
+    return length
+    \end{lstlisting}
+
+    \subsubsection{Inicjalizacja feromonów}
+    
+    Macierz feromonów jest inicjalizowana wartością 1.0 dla wszystkich krawędzi.
+
+    \begin{lstlisting}[language=Python, caption={Inicjalizacja feromonów}]
+self.pheromones = [
+    [1.0] * self.num_attractions for _ in range(self.num_attractions)
+]
+    \end{lstlisting}
+
+    \subsubsection{Mechanizm konstrukcji trasy (reguła wyboru)}
+    
+    Mrówka wybiera następny wierzchołek na podstawie prawdopodobieństwa zależnego od feromonów i heurystyki.
+    Z małym prawdopodobieństwem $p_{random}$ może wybrać losowy wierzchołek (eksploracja).
+
+    \begin{lstlisting}[language=Python, caption={Wybór następnego wierzchołka przez mrówkę}]
+def select_next_node(self, p_random: float) -> None:
+    current_node = self.visited[-1]
+    allowed_nodes = list(set(range(self.num_attractions)) - set(self.visited))
+
+    if not allowed_nodes:
+        return
+
+    # Losowy wybor (eksploracja)
+    if random.random() < p_random:
+        next_node = random.choice(allowed_nodes)
+        self.visited.append(next_node)
+        return
+
+    # Wybor na podstawie feromonow i heurystyki
+    possibilities = self._calculate_possibilities(current_node, allowed_nodes)
+    next_node = random.choices(allowed_nodes, weights=possibilities)[0]
+    self.visited.append(next_node)
+
+def _calculate_possibilities(self, current_node, allowed_nodes):
+    scores = []
+    denominator = 0.0
+    
+    for node in allowed_nodes:
+        tau = Ant.pheromones[current_node][node]
+        distance = Ant.distances_matrix[current_node][node]
+        if distance == 0:
+            distance = 1e-10  # Obsługa zerowej odległości
+        eta = 1.0 / distance
+        
+        score = (tau ** Ant.alpha) * (eta ** Ant.beta)
+        scores.append(score)
+        denominator += score
+
+    if denominator == 0.0:
+        return [1.0 / len(allowed_nodes)] * len(allowed_nodes)
+    
+    return [score / denominator for score in scores]
+    \end{lstlisting}
+
+    \subsubsection{Aktualizacja feromonów i wyparowywanie}
+    
+    Po każdej iteracji feromony wyparowują (mnożenie przez $(1-\rho)$), a następnie mrówki deponują feromony proporcjonalnie do jakości swojej trasy.
+
+    \begin{lstlisting}[language=Python, caption={Aktualizacja feromonów}]
+def _update_pheromones(self, ants):
+    evaporation_factor = 1.0 - self.rho
+
+    # Wyparowywanie feromonów
+    for i in range(self.num_attractions):
+        for j in range(self.num_attractions):
+            self.pheromones[i][j] *= evaporation_factor
+
+    # Depozyt feromonów
+    for ant in ants:
+        path = ant.get_visited()
+        path_length = ant.get_path_length()
+
+        if path_length > 0:
+            deposit = 1.0 / path_length
+            for i in range(len(path) - 1):
+                from_node = path[i]
+                to_node = path[i + 1]
+                self.pheromones[from_node][to_node] += deposit
+                self.pheromones[to_node][from_node] += deposit
+    \end{lstlisting}
+
+    \subsection{Instrukcja uruchomienia programu}
+
+    Program uruchamia się poprzez wywołanie pliku \texttt{main.py}:
+    \begin{center}
+        \texttt{python main.py}
+    \end{center}
+    
+    Program jest interaktywny i prosi użytkownika o:
+    \begin{enumerate}
+        \item Wybór pliku z danymi (A-n32-k5.txt lub A-n80-k10.txt).
+        \item Podanie parametrów algorytmu:
+        \begin{itemize}
+            \item Liczba mrówek ($m$)
+            \item Liczba iteracji ($T$)
+            \item Wpływ feromonów ($\alpha$)
+            \item Wpływ heurystyki ($\beta$)
+            \item Współczynnik wyparowywania ($\rho$)
+            \item Prawdopodobieństwo losowego wyboru ($p_{random}$)
+        \end{itemize}
+    \end{enumerate}
+    
+    Po zakończeniu działania wyświetlane są: najlepsza znaleziona trasa (kolejność atrakcji) oraz jej długość.
+
+    W celu wygenerowania wszystkich eksperymentów opisanych w dalszej części sprawozdania, należy uruchomić skrypt:
+    \begin{center}
+        \texttt{python all\_experiments.py}
+    \end{center}
+    
+    Wykresy generuje się komendą:
+    \begin{center}
+        \texttt{python plots.py}
+    \end{center}
+
+    \newpage
+
+    \section{Eksperymenty i wyniki}
+
+    Przeprowadzono serię eksperymentów dla dwóch zbiorów danych:
+    \begin{itemize}
+        \item \textbf{A-n32-k5} --- 32 atrakcje
+        \item \textbf{A-n80-k10} --- 80 atrakcji
+    \end{itemize}
+    
+    Dla każdej konfiguracji algorytm był uruchamiany 5 razy w celu uzyskania statystyk.
+
+    \subsection{Wpływ liczby mrówek ($m$)}
+    
+    Badano wartości: $m \in \{10, 20, 50, 100\}$.
+    
+    Większa liczba mrówek zwiększa eksplorację przestrzeni rozwiązań, co zazwyczaj prowadzi do lepszych wyników.
+    Jednak wiąże się to z dłuższym czasem obliczeń.
+    
+    \textbf{Obserwacje:}
+    \begin{itemize}
+        \item Zwiększenie liczby mrówek z 10 do 50 znacząco poprawia jakość rozwiązań.
+        \item Dalsze zwiększanie (do 100) daje marginalne korzyści przy znacznym wzroście czasu obliczeń.
+        \item Optymalna wartość to $m \approx 20-50$ dla badanych instancji.
+    \end{itemize}
+
+    \subsection{Wpływ prawdopodobieństwa losowego wyboru ($p_{random}$)}
+    
+    Badano wartości: $p_{random} \in \{0.0, 0.01, 0.05, 0.1\}$.
+    
+    Parametr ten kontroluje eksplorację vs eksploatację.
+    
+    \textbf{Obserwacje:}
+    \begin{itemize}
+        \item Niewielkie wartości ($p_{random} = 0.01$) mogą pomóc uniknąć lokalnych minimów.
+        \item Zbyt duże wartości ($p_{random} > 0.1$) wprowadzają zbyt dużo losowości i pogarszają wyniki.
+        \item Najlepsze wyniki uzyskano dla $p_{random} = 0$ lub $p_{random} = 0.01$.
+    \end{itemize}
+
+    \subsection{Wpływ współczynnika $\alpha$ (wpływ feromonów)}
+    
+    Badano wartości: $\alpha \in \{0.5, 1.0, 2.0, 5.0\}$.
+    
+    \textbf{Obserwacje:}
+    \begin{itemize}
+        \item $\alpha = 1.0$ daje dobre wyniki jako punkt wyjścia.
+        \item Zbyt wysokie wartości ($\alpha = 5.0$) prowadzą do zbyt szybkiej zbieżności i utknięcia w lokalnych minimach.
+        \item Zbyt niskie wartości osłabiają wpływ uczenia się z poprzednich iteracji.
+    \end{itemize}
+
+    \subsection{Wpływ współczynnika $\beta$ (wpływ heurystyki)}
+    
+    Badano wartości: $\beta \in \{1.0, 2.0, 5.0, 10.0\}$.
+    
+    \textbf{Obserwacje:}
+    \begin{itemize}
+        \item $\beta = 2.0$ jest dobrą wartością bazową.
+        \item Wyższe wartości ($\beta = 5.0$) faworyzują wybór bliskich wierzchołków (zachłanność).
+        \item Dla mniejszych instancji wyższe $\beta$ może być korzystne.
+    \end{itemize}
+
+    \subsection{Wpływ liczby iteracji ($T$)}
+    
+    Badano wartości: $T \in \{100, 500, 1000\}$.
+    
+    \textbf{Obserwacje:}
+    \begin{itemize}
+        \item Więcej iteracji zazwyczaj prowadzi do lepszych wyników.
+        \item Dla mniejszej instancji (32 atrakcje) wystarczy $T = 100-500$.
+        \item Dla większej instancji (80 atrakcji) korzystne jest $T \geq 500$.
+    \end{itemize}
+
+    \subsection{Wpływ współczynnika wyparowywania ($\rho$)}
+    
+    Badano wartości: $\rho \in \{0.1, 0.3, 0.5, 0.8\}$.
+    
+    \textbf{Obserwacje:}
+    \begin{itemize}
+        \item $\rho = 0.5$ stanowi dobry kompromis.
+        \item Zbyt niskie $\rho$ (wolne wyparowywanie) prowadzi do zbyt silnego wpływu starych ścieżek.
+        \item Zbyt wysokie $\rho$ (szybkie wyparowywanie) może utracić dobre rozwiązania.
+    \end{itemize}
+
+    \newpage
+
+    \section{Wnioski}
+
+    Na podstawie przeprowadzonych eksperymentów sformułowano następujące wnioski:
+    
+    \begin{itemize}
+        \item \textbf{Skuteczność algorytmu}: Algorytm mrówkowy skutecznie znajduje dobre rozwiązania problemu komiwojażera dla obu badanych instancji.
+        
+        \item \textbf{Wpływ liczby mrówek}: Większa kolonia zwiększa jakość rozwiązań kosztem czasu obliczeń. Zalecana wartość: $m = 20-50$.
+        
+        \item \textbf{Losowy wybór}: Niewielkie prawdopodobieństwo losowego wyboru ($p_{random} = 0.01$) może pomóc w eksploracji, ale zbyt duże wartości pogarszają wyniki.
+        
+        \item \textbf{Balans $\alpha$ i $\beta$}: Typowe wartości $\alpha = 1.0$ i $\beta = 2.0$ dają dobre wyniki. Można dostosować w zależności od charakterystyki problemu.
+        
+        \item \textbf{Liczba iteracji}: Więcej iteracji poprawia wyniki, ale z malejącym efektem. Dla badanych instancji $T = 100-500$ jest wystarczające.
+        
+        \item \textbf{Wyparowywanie}: Wartość $\rho = 0.5$ stanowi dobry kompromis między eksploracją a eksploatacją.
+    \end{itemize}
+
+    \subsection{Rekomendacje parametrów}
+    
+    Na podstawie eksperymentów rekomendujemy następujące zakresy parametrów:
+    \begin{center}
+        \begin{tabular}{ll}
+            \toprule
+            \textbf{Parametr} & \textbf{Zalecana wartość} \\
+            \midrule
+            Liczba mrówek ($m$) & 20--50 \\
+            Wpływ feromonów ($\alpha$) & 1.0 \\
+            Wpływ heurystyki ($\beta$) & 2.0--5.0 \\
+            Wyparowywanie ($\rho$) & 0.3--0.5 \\
+            Iteracje ($T$) & 100--500 \\
+            Losowy wybór ($p_{random}$) & 0.0--0.01 \\
+            \bottomrule
+        \end{tabular}
+    \end{center}
+
+    \subsection{Ograniczenia eksperymentu}
+    
+    \begin{itemize}
+        \item Ograniczony czas obliczeń --- nie testowano pełnego gridu parametrów.
+        \item Każda konfiguracja była uruchomiona 5 razy --- większa liczba powtórzeń dałaby dokładniejsze statystyki.
+        \item Testowano tylko dwa rozmiary instancji (32 i 80 atrakcji).
+        \item Nie testowano innych wariantów ACO (np. MMAS, ACS).
+    \end{itemize}
+
+\end{document}
