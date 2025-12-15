@@ -63,13 +63,12 @@ def select_data_file():
 
     while True:
         choice = input("Wybierz plik z danymi (1-2): ").strip()
-        match choice:
-            case "1":
-                return "A-n32-k5.txt"
-            case "2":
-                return "A-n80-k10.txt"
-            case _:
-                print("Błąd! Wybierz opcję 1-2.")
+        if choice == "1":
+            return "A-n32-k5.txt"
+        elif choice == "2":
+            return "A-n80-k10.txt"
+        else:
+            print("Błąd! Wybierz opcję 1-2.")
 
 
 def get_parameters():

@@ -73,12 +73,18 @@ def plot_convergence(
     plots_dir: str
 ) -> None:
     """Plot convergence over iterations with mean and min-max area."""
+    # Filter out empty histories
+    valid_histories = [h for h in histories if h]
+    if not valid_histories:
+        print("  Warning: No valid histories to plot")
+        return
+
     fig, ax = plt.subplots(figsize=(12, 6))
 
     # Convert to numpy array for easier manipulation
-    max_len = max(len(h) for h in histories)
+    max_len = max(len(h) for h in valid_histories)
     histories_padded = []
-    for h in histories:
+    for h in valid_histories:
         padded = h + [h[-1]] * (max_len - len(h))
         histories_padded.append(padded)
 
@@ -220,17 +226,9 @@ def analyze_and_plot_results(results_dir: str, plots_dir: str) -> None:
             if exp_data.empty:
                 continue
 
-            # Create boxplot data
             fig, ax = plt.subplots(figsize=(10, 7))
 
             param_values = sorted(exp_data['varied_value'].unique())
-            boxplot_data = []
-
-            for val in param_values:
-                row = exp_data[exp_data['varied_value'] == val].iloc[0]
-                # Use mean, min, max, std to approximate distribution
-                # Since we don't have individual values, use statistics
-                boxplot_data.append([row['min'], row['mean'], row['max']])
 
             # Use bar chart with error bars instead
             means = exp_data.sort_values('varied_value')['mean'].values
