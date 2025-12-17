@@ -45,8 +45,13 @@ class Ant:
         scores = []
         for node in allowed_nodes:
             tau = Ant.pheromones[current_node][node]
+            distance = Ant.distances_matrix[current_node][node]
 
-            eta = 1.0 / Ant.distances_matrix[current_node][node]
+            # Handle zero distance (same location) by using a very small value
+            if distance == 0:
+                distance = 1e-10
+
+            eta = 1.0 / distance
 
             score = (tau**Ant.alpha) * (eta**Ant.beta)
             scores.append(score)
