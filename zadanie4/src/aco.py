@@ -62,15 +62,13 @@ class ACO:
             'history': self.history_best,
         }
 
-    def _update_pheromones(self, ants):
+    def _update_pheromones(self, ants) -> None:
         evaporation_factor = 1.0 - self.rho
 
-        # Evaporate pheromones on all edges
         for i in range(self.num_attractions):
             for j in range(self.num_attractions):
                 self.pheromones[i][j] *= evaporation_factor
 
-        # Deposit pheromones based on ant paths
         for ant in ants:
             path = ant.get_visited()
             path_length = ant.get_path_length()

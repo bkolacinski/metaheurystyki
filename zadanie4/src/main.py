@@ -6,8 +6,7 @@ from read_data import read_data
 
 def get_float_input(
     prompt: str, default: float = None, min_val: float = None, max_val: float = None
-) -> float:
-    """Pobiera liczbę zmiennoprzecinkową od użytkownika."""
+) -> float | None:
     while True:
         try:
             if default is not None:
@@ -30,8 +29,7 @@ def get_float_input(
 
 def get_int_input(
     prompt: str, default: int = None, min_val: int = None, max_val: int = None
-) -> int:
-    """Pobiera liczbę całkowitą od użytkownika."""
+) -> int | None:
     while True:
         try:
             if default is not None:
@@ -53,13 +51,12 @@ def get_int_input(
 
 
 def select_data_file():
-    """Wybór pliku z danymi."""
-    print("\n" + "=" * 50)
+    print("\n" + "-" * 50)
     print("WYBÓR PLIKU Z DANYMI")
-    print("=" * 50)
+    print("-" * 50)
     print("1. A-n32-k5.txt (32 atrakcje)")
     print("2. A-n80-k10.txt (80 atrakcji)")
-    print("=" * 50)
+    print("-" * 50)
 
     while True:
         choice = input("Wybierz plik z danymi (1-2): ").strip()
@@ -72,10 +69,9 @@ def select_data_file():
 
 
 def get_parameters():
-    """Pobiera parametry algorytmu od użytkownika."""
-    print("\n" + "=" * 50)
+    print("\n" + "-" * 50)
     print("PARAMETRY ALGORYTMU")
-    print("=" * 50)
+    print("-" * 50)
 
     m = get_int_input("Liczba mrówek (m)", default=20, min_val=1)
     iterations = get_int_input("Liczba iteracji", default=100, min_val=1)
@@ -104,15 +100,13 @@ def get_parameters():
 
 
 def display_results(result: dict, exec_time: float, index_map: dict):
-    """Wyświetla wyniki działania algorytmu."""
-    print("\n" + "=" * 50)
+    print("\n" + "-" * 50)
     print("WYNIKI OPTYMALIZACJI")
-    print("=" * 50)
+    print("-" * 50)
 
     best_path = result['best_path']
     best_cost = result['best_cost']
 
-    # Convert internal indices to attraction IDs
     attraction_ids = [index_map[idx] for idx in best_path]
 
     print(f"\nNajlepsza znaleziona trasa:")
@@ -124,14 +118,12 @@ def display_results(result: dict, exec_time: float, index_map: dict):
 
 
 def main():
-    """Główna funkcja programu."""
-    print("\n" + "=" * 50)
+    print("\n" + "-" * 50)
     print("ALGORYTM MRÓWKOWY (ACO) - PROBLEM KOMIWOJAŻERA")
     print("Odwiedzanie atrakcji w wesołym miasteczku")
-    print("=" * 50)
+    print("-" * 50)
 
     while True:
-        # Wybór pliku z danymi
         data_filename = select_data_file()
         data_file_path = os.path.join(
             os.path.dirname(__file__),
@@ -151,10 +143,8 @@ def main():
             print(f"Błąd podczas wczytania danych: {e}")
             continue
 
-        # Pobranie parametrów algorytmu
         params = get_parameters()
 
-        # Inicjalizacja algorytmu
         aco = ACO(
             data=data,
             distances_matrix=distances_matrix,
@@ -162,7 +152,6 @@ def main():
             params=params,
         )
 
-        print("\nUruchamianie algorytmu...")
         result, exec_time = aco.run()
 
         display_results(result, exec_time, index_map)
@@ -174,7 +163,6 @@ def main():
             .lower()
         )
         if repeat not in ["tak", "t", "yes", "y"]:
-            print("\nDziękujemy za skorzystanie z programu!")
             break
 
 

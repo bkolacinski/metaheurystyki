@@ -39,7 +39,8 @@ class Ant:
             length += self.distances_matrix[l1][l2]
         return length
 
-    def _calculate_possibilities(self, current_node, allowed_nodes):
+    @staticmethod
+    def _calculate_possibilities(current_node, allowed_nodes):
         denominator = 0.0
 
         scores = []
@@ -47,7 +48,6 @@ class Ant:
             tau = Ant.pheromones[current_node][node]
             distance = Ant.distances_matrix[current_node][node]
 
-            # Handle zero distance (same location) by using a very small value
             if distance == 0:
                 distance = 1e-10
 

@@ -1,8 +1,6 @@
 import os
-from pathlib import Path
 
 import matplotlib.pyplot as plt
-import matplotlib.ticker as ticker
 import numpy as np
 import pandas as pd
 
@@ -15,17 +13,13 @@ def plot_route(
     filename: str,
     plots_dir: str
 ) -> None:
-    """Plot the route on a 2D map showing all attractions."""
     fig, ax = plt.subplots(figsize=(12, 10))
 
-    # Extract coordinates
     x_coords = [d[1] for d in data]
     y_coords = [d[2] for d in data]
 
-    # Plot all attractions
     ax.scatter(x_coords, y_coords, c='blue', s=100, zorder=5, label='Atrakcje')
 
-    # Add labels for each attraction
     for i, (id_num, x, y) in enumerate(data):
         ax.annotate(
             str(id_num), (x, y),
@@ -33,24 +27,26 @@ def plot_route(
             fontsize=8, fontweight='bold'
         )
 
-    # Plot the route
     if path:
         route_x = [data[idx][1] for idx in path]
         route_y = [data[idx][2] for idx in path]
 
-        # Add closing edge to return to start
-        route_x.append(route_x[0])
-        route_y.append(route_y[0])
+        route_ids = [index_map[idx] for idx in path]
+        print(f"  Trasa: {' -> '.join(map(str, route_ids))}")
 
         ax.plot(
             route_x, route_y, 'r-', linewidth=2, alpha=0.7,
             label='Trasa', zorder=3
         )
 
-        # Mark start point
         ax.scatter(
-            [route_x[0]], [route_y[0]], c='green', s=200,
-            marker='*', zorder=6, label='Start'
+            [route_x[0]], [route_y[0]], c='lime', s=300,
+            marker='*', zorder=7, label='Start', edgecolors='darkgreen', linewidths=2
+        )
+
+        ax.scatter(
+            [route_x[-1]], [route_y[-1]], c='red', s=200,
+            marker='s', zorder=7, label='Koniec', edgecolors='darkred', linewidths=2
         )
 
     ax.set_xlabel('Współrzędna X', fontsize=12)
@@ -72,8 +68,6 @@ def plot_convergence(
     filename: str,
     plots_dir: str
 ) -> None:
-    """Plot convergence over iterations with mean and min-max area."""
-    # Filter out empty histories
     valid_histories = [h for h in histories if h]
     if not valid_histories:
         print("  Warning: No valid histories to plot")
@@ -81,7 +75,6 @@ def plot_convergence(
 
     fig, ax = plt.subplots(figsize=(12, 6))
 
-    # Convert to numpy array for easier manipulation
     max_len = max(len(h) for h in valid_histories)
     histories_padded = []
     for h in valid_histories:
@@ -95,10 +88,8 @@ def plot_convergence(
     min_values = np.min(histories_array, axis=0)
     max_values = np.max(histories_array, axis=0)
 
-    # Plot mean line
     ax.plot(iterations, mean_values, 'b-', linewidth=2, label='Średnia')
 
-    # Plot min-max area
     ax.fill_between(
         iterations, min_values, max_values,
         alpha=0.3, color='blue', label='Zakres min-max'
@@ -125,10 +116,8 @@ def plot_parameter_comparison(
     filename: str,
     plots_dir: str
 ) -> None:
-    """Plot boxplot comparing results for different parameter values."""
     fig, ax = plt.subplots(figsize=(10, 7))
 
-    # Group data by parameter value
     param_values = sorted(set(d['varied_value'] for d in data))
     boxplot_data = []
 
@@ -163,7 +152,6 @@ def plot_bar_comparison(
     filename: str,
     plots_dir: str
 ) -> None:
-    """Plot bar chart with error bars showing min-max range."""
     fig, ax = plt.subplots(figsize=(12, 6))
 
     x = np.arange(len(labels))
@@ -188,11 +176,54 @@ def plot_bar_comparison(
     print(f"  Wykres słupkowy zapisany: {filepath}")
 
 
-def analyze_and_plot_results(results_dir: str, plots_dir: str) -> None:
-    """Analyze results and generate all plots."""
+def generate_best_route_plots(data_dir: str, results_dir: str, plots_dir: str) -> None:
+    import ast
+    from read_data import read_data
+
     os.makedirs(plots_dir, exist_ok=True)
 
-    # Process each data file
+    for data_name in ['A-n32-k5', 'A-n80-k10']:
+        data_file = os.path.join(data_dir, f'{data_name}.txt')
+        summary_file = os.path.join(results_dir, data_name, 'summary.csv')
+
+        if not os.path.exists(data_file):
+            print(f"Brak pliku danych: {data_file}")
+            continue
+        if not os.path.exists(summary_file):
+            print(f"Brak pliku wyników: {summary_file}")
+            continue
+
+        print(f"\n{'=' * 60}")
+        print(f"GENEROWANIE WYKRESU NAJLEPSZEJ TRASY DLA: {data_name}")
+        print(f"{'=' * 60}")
+
+        data, distances_matrix, index_map = read_data(data_file)
+
+        summary_df = pd.read_csv(summary_file)
+
+        best_row = summary_df.loc[summary_df['best_cost'].idxmin()]
+        best_cost = best_row['best_cost']
+        best_path = ast.literal_eval(best_row['best_path'])
+
+        print(f"  Najlepszy koszt: {best_cost:.2f}")
+        print(f"  Parametry: {best_row['params']}")
+
+        data_plots_dir = os.path.join(plots_dir, data_name)
+        os.makedirs(data_plots_dir, exist_ok=True)
+
+        plot_route(
+            data=data,
+            path=best_path,
+            index_map=index_map,
+            title=f'Najlepsza trasa dla {data_name} (koszt: {best_cost:.2f})',
+            filename='best_route.png',
+            plots_dir=data_plots_dir
+        )
+
+
+def analyze_and_plot_results(results_dir: str, plots_dir: str) -> None:
+    os.makedirs(plots_dir, exist_ok=True)
+
     for data_name in ['A-n32-k5', 'A-n80-k10']:
         data_results_dir = os.path.join(results_dir, data_name)
         data_plots_dir = os.path.join(plots_dir, data_name)
@@ -209,7 +240,6 @@ def analyze_and_plot_results(results_dir: str, plots_dir: str) -> None:
 
         summary_df = pd.read_csv(summary_file)
 
-        # Generate boxplots for each experiment type
         experiment_configs = {
             'm': ('Liczba mrówek (m)', 'Wpływ liczby mrówek na wyniki'),
             'p_random': ('Prawdopodobieństwo losowego wyboru (p_random)',
@@ -230,7 +260,6 @@ def analyze_and_plot_results(results_dir: str, plots_dir: str) -> None:
 
             param_values = sorted(exp_data['varied_value'].unique())
 
-            # Use bar chart with error bars instead
             means = exp_data.sort_values('varied_value')['mean'].values
             mins = exp_data.sort_values('varied_value')['min'].values
             maxs = exp_data.sort_values('varied_value')['max'].values
@@ -252,7 +281,6 @@ def analyze_and_plot_results(results_dir: str, plots_dir: str) -> None:
             plt.close()
             print(f"  Wykres zapisany: {filepath}")
 
-        # Print statistics table
         print(f"\n{'=' * 60}")
         print(f"STATYSTYKI DLA: {data_name}")
         print(f"{'=' * 60}")
@@ -273,7 +301,6 @@ def analyze_and_plot_results(results_dir: str, plots_dir: str) -> None:
 
 
 def main():
-    """Main function to generate all plots."""
     print("=" * 80)
     print("GENEROWANIE WYKRESÓW DLA ALGORYTMU MRÓWKOWEGO")
     print("=" * 80)
@@ -281,6 +308,9 @@ def main():
     base_dir = os.path.dirname(__file__)
     results_dir = os.path.join(base_dir, '..', 'results')
     plots_dir = os.path.join(base_dir, '..', 'plots')
+    data_dir = os.path.join(base_dir, '..', 'data')
+
+    generate_best_route_plots(data_dir, results_dir, plots_dir)
 
     analyze_and_plot_results(results_dir, plots_dir)
 
