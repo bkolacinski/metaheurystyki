@@ -228,7 +228,7 @@ def _calculate_possibilities(self, current_node, allowed_nodes):
         tau = Ant.pheromones[current_node][node]
         distance = Ant.distances_matrix[current_node][node]
         if distance == 0:
-            distance = 1e-10  # Obsługa zerowej odległości
+            distance = 1e-10  # Obsluga zerowej odleglosci
         eta = 1.0 / distance
         
         score = (tau ** Ant.alpha) * (eta ** Ant.beta)
@@ -249,12 +249,12 @@ def _calculate_possibilities(self, current_node, allowed_nodes):
 def _update_pheromones(self, ants):
     evaporation_factor = 1.0 - self.rho
 
-    # Wyparowywanie feromonów
+    # Wyparowywanie feromonow
     for i in range(self.num_attractions):
         for j in range(self.num_attractions):
             self.pheromones[i][j] *= evaporation_factor
 
-    # Depozyt feromonów
+    # Depozyt feromonow
     for ant in ants:
         path = ant.get_visited()
         path_length = ant.get_path_length()
@@ -312,7 +312,29 @@ def _update_pheromones(self, ants):
     \end{itemize}
     
     Dla każdej konfiguracji algorytm był uruchamiany 5 razy w celu uzyskania statystyk.
-    Poniżej przedstawione wnioski są z eksperymentów dla pliku \textbf{A-n80-k10}.
+    Wykresy z analizą wpływu parametrów przedstawione w dalszej części dotyczą instancji \textbf{A-n80-k10}, jako że jest ona bardziej wymagająca obliczeniowo i lepiej pokazuje różnice między konfiguracjami.
+
+    \subsection{Najlepsze znalezione rozwiązania}
+
+    Poniżej przedstawiono wizualizacje najlepszych tras znalezionych przez algorytm dla obu instancji testowych.
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{../plots/A-n32-k5/best_route.png}
+        \caption{Najlepsza znaleziona trasa dla instancji A-n32-k5. Zielona gwiazdka oznacza punkt startowy, a czerwony kwadrat --- punkt końcowy trasy. Uzyskany koszt to 423.83 jednostki.}
+        \label{fig:best_route_32}
+    \end{figure}
+
+    Dla mniejszej instancji (32 atrakcje) uzyskana trasa nie zawiera przecięć, a punkty są odwiedzane w logicznej kolejności
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{../plots/A-n80-k10/best_route.png}
+        \caption{Najlepsza znaleziona trasa dla instancji A-n80-k10. Przy 80 atrakcjach problem jest znacznie trudniejszy, ale algorytm mrówkowy nadal znajduje rozsądne rozwiązanie o koszcie 734.37.}
+        \label{fig:best_route_80}
+    \end{figure}
+
+    Dla większej instancji (80 atrakcji) algorytm również znajduje rozwiązanie bez znaczących przecięć.
 
     \newpage
     \subsection{Wpływ liczby mrówek ($m$)}
@@ -322,18 +344,17 @@ def _update_pheromones(self, ants):
     \begin{figure}[H]
         \centering
         \includegraphics[width=0.85\textwidth]{../plots/A-n80-k10/influence_m.png}
-        \caption{Wpływ liczby mrówek na jakość rozwiązania.}
+        \caption{Wpływ liczby mrówek na średnią długość trasy. Słupki błędów pokazują odchylenie standardowe z 5 uruchomień. Im niższy słupek, tym lepszy wynik.}
         \label{fig:influence_population}
     \end{figure}
 
-    Większa liczba mrówek zwiększa eksplorację przestrzeni rozwiązań, co zazwyczaj prowadzi do lepszych wyników.
-    Jednak wiąże się to z dłuższym czasem obliczeń.
+    Różnice między poszczególnymi wartościami są umiarkowane --- wszystkie wyniki mieszczą się w przedziale 750--770.
     
     \textbf{Obserwacje:}
     \begin{itemize}
-        \item Zwiększenie liczby mrówek z 10 do 50 znacząco poprawia jakość rozwiązań.
-        \item Dalsze zwiększanie (do 100) daje marginalne korzyści przy znacznym wzroście czasu obliczeń.
-        \item Optymalna wartość to $m \approx 20-50$ dla badanych instancji.
+        \item Przy $m = 10$ uzyskano najgorszy średni wynik ($\sim$770) oraz największe odchylenie standardowe.
+        \item Zwiększenie do $m = 50$--$100$ daje poprawę o około 15--20 jednostek i zmniejsza wariancję wyników.
+        \item Wartość $m = 20$--$50$ stanowi rozsądny kompromis między jakością rozwiązania a czasem obliczeń.
     \end{itemize}
 
     \newpage
@@ -344,18 +365,20 @@ def _update_pheromones(self, ants):
     \begin{figure}[H]
         \centering
         \includegraphics[width=0.85\textwidth]{../plots/A-n80-k10/influence_p_random.png}
-        \caption{Wpływ prawdopodobieństwa losowego wyboru na jakość rozwiązania.}
+        \caption{Wpływ prawdopodobieństwa losowego wyboru na średnią długość trasy. Wyraźnie widać, że zbyt duża losowość psuje wyniki.}
         \label{fig:influence_p_random}
     \end{figure}
 
-    Parametr ten kontroluje eksplorację vs eksploatację.
+    Ten parametr wykazuje najsilniejszy wpływ na jakość rozwiązania spośród wszystkich badanych.
     
     \textbf{Obserwacje:}
     \begin{itemize}
-        \item Niewielkie wartości ($p_{random} = 0.01$) mogą pomóc uniknąć lokalnych minimów.
-        \item Zbyt duże wartości ($p_{random} > 0.1$) wprowadzają zbyt dużo losowości i pogarszają wyniki.
-        \item Najlepsze wyniki uzyskano dla $p_{random} = 0$ lub $p_{random} = 0.01$.
+        \item Wartości $p_{random} = 0.0$ i $p_{random} = 0.01$ dają praktycznie identyczne wyniki ($\sim$760).
+        \item Przy $p_{random} = 0.05$ średni koszt rośnie do około 830.
+        \item Przy $p_{random} = 0.1$ wynik pogarsza się do $\sim$945 --- prawie 200 jednostek więcej niż bez losowości.
     \end{itemize}
+    
+    Zbyt duże prawdopodobieństwo losowego wyboru zaburza proces uczenia oparty na feromonach. Zalecana wartość: $p_{random} \leq 0.01$.
 
     \newpage
     \subsection{Wpływ współczynnika $\alpha$ (wpływ feromonów)}
@@ -365,16 +388,18 @@ def _update_pheromones(self, ants):
     \begin{figure}[H]
         \centering
         \includegraphics[width=0.85\textwidth]{../plots/A-n80-k10/influence_alpha.png}
-        \caption{Wpływ współczynnika $\alpha$ na jakość rozwiązania.}
+        \caption{Wpływ współczynnika $\alpha$ na średnią długość trasy. Zbyt niska wartość $\alpha$ oznacza ignorowanie feromonów.}
         \label{fig:influence_alpha}
     \end{figure}
     
     \textbf{Obserwacje:}
     \begin{itemize}
-        \item $\alpha = 1.0$ daje dobre wyniki jako punkt wyjścia.
-        \item Zbyt wysokie wartości ($\alpha = 5.0$) prowadzą do zbyt szybkiej zbieżności i utknięcia w lokalnych minimach.
-        \item Zbyt niskie wartości osłabiają wpływ uczenia się z poprzednich iteracji.
+        \item $\alpha = 0.5$ daje najgorszy wynik ($\sim$900) --- zbyt słaby wpływ feromonów ogranicza uczenie kolektywne.
+        \item $\alpha = 1.0$ i $\alpha = 2.0$ dają podobne, dobre wyniki ($\sim$760).
+        \item $\alpha = 5.0$ jest nieznacznie gorsze ($\sim$770) z większą wariancją --- zbyt silny wpływ feromonów powoduje przedwczesną zbieżność.
     \end{itemize}
+    
+    Optymalne wartości to $\alpha = 1.0$--$2.0$, zapewniające równowagę między eksploracją a eksploatacją.
 
     \newpage
     \subsection{Wpływ współczynnika $\beta$ (wpływ heurystyki)}
@@ -384,16 +409,18 @@ def _update_pheromones(self, ants):
     \begin{figure}[H]
         \centering
         \includegraphics[width=0.85\textwidth]{../plots/A-n80-k10/influence_beta.png}
-        \caption{Wpływ współczynnika $\beta$ na jakość rozwiązania.}
+        \caption{Wpływ współczynnika $\beta$ na średnią długość trasy. Wyższe $\beta$ oznacza większą ''zachłanność'' --- mrówki preferują bliskie wierzchołki.}
         \label{fig:influence_beta}
     \end{figure}
     
     \textbf{Obserwacje:}
     \begin{itemize}
-        \item $\beta = 2.0$ jest dobrą wartością bazową.
-        \item Wyższe wartości ($\beta = 5.0$) faworyzują wybór bliskich wierzchołków (zachłanność).
-        \item Dla mniejszych instancji wyższe $\beta$ może być korzystne.
+        \item $\beta = 1.0$ daje najgorszy wynik ($\sim$850) --- zbyt słaba preferencja bliskich wierzchołków.
+        \item $\beta = 2.0$ znacząco poprawia wynik ($\sim$760).
+        \item $\beta = 5.0$ i $\beta = 10.0$ dają najlepsze wyniki ($\sim$745--750).
     \end{itemize}
+    
+    Wysokie wartości $\beta$ nie powodują utknięcia w lokalnych minimach. Silna heurystyka odległościowa jest korzystna dla problemu TSP.
 
     \newpage
     \subsection{Wpływ liczby iteracji ($T$)}
@@ -403,16 +430,18 @@ def _update_pheromones(self, ants):
     \begin{figure}[H]
         \centering
         \includegraphics[width=0.85\textwidth]{../plots/A-n80-k10/influence_iterations.png}
-        \caption{Wpływ liczby iteracji na jakość rozwiązania.}
+        \caption{Wpływ liczby iteracji na średnią długość trasy. Więcej iteracji = więcej czasu na szukanie, ale zysk jest niewielki.}
         \label{fig:influence_iterations}
     \end{figure}
     
     \textbf{Obserwacje:}
     \begin{itemize}
-        \item Więcej iteracji zazwyczaj prowadzi do lepszych wyników.
-        \item Dla mniejszej instancji (32 atrakcje) wystarczy $T = 100-500$.
-        \item Dla większej instancji (80 atrakcji) korzystne jest $T \geq 500$.
+        \item Różnice są niewielkie --- wszystkie wyniki mieszczą się w przedziale 740--755.
+        \item Przy $T = 100$ średni koszt wynosi około 755, przy $T = 1000$ --- około 740.
+        \item Dziesięciokrotny wzrost liczby iteracji daje poprawę o jedynie 15 jednostek.
     \end{itemize}
+    
+    Algorytm szybko osiąga stabilizację. Dla badanych instancji $T = 100$--$500$ jest wystarczające.
 
     \newpage
     \subsection{Wpływ współczynnika wyparowywania ($\rho$)}
@@ -421,17 +450,19 @@ def _update_pheromones(self, ants):
 
     \begin{figure}[H]
         \centering
-        \includegraphics[width=0.85\textwidth]{../plots/A-n80-k10/influence_m.png}
-        \caption{Wpływ współczynnika wyparowywania $\rho$ na jakość rozwiązania.}
+        \includegraphics[width=0.85\textwidth]{../plots/A-n80-k10/influence_rho.png}
+        \caption{Wpływ współczynnika wyparowywania $\rho$ na średnią długość trasy. Parametr kontroluje, jak szybko ''zapominane'' są stare ścieżki.}
         \label{fig:influence_evaporation}
     \end{figure}
     
-    \textbf{Obserwacje:}
+    \textbf{Co widzimy:}
     \begin{itemize}
-        \item $\rho = 0.5$ stanowi dobry kompromis.
-        \item Zbyt niskie $\rho$ (wolne wyparowywanie) prowadzi do zbyt silnego wpływu starych ścieżek.
-        \item Zbyt wysokie $\rho$ (szybkie wyparowywanie) może utracić dobre rozwiązania.
+        \item $\rho = 0.1$ (wolne wyparowywanie) daje najgorszy wynik ($\sim$795) --- stare feromony zbyt długo wpływają na decyzje.
+        \item $\rho = 0.3$, $\rho = 0.5$ i $\rho = 0.8$ dają bardzo podobne wyniki ($\sim$760--765).
+        \item W praktyce nie ma dużej różnicy między wartościami 0.3--0.8.
     \end{itemize}
+    
+    Kluczowe jest unikanie zbyt niskiej wartości $\rho$, która powoduje nadmierne utrzymywanie starych ścieżek feromonowych.
 
     \newpage
 
@@ -440,44 +471,46 @@ def _update_pheromones(self, ants):
     Na podstawie przeprowadzonych eksperymentów sformułowano następujące wnioski:
     
     \begin{itemize}
-        \item \textbf{Skuteczność algorytmu}: Algorytm mrówkowy skutecznie znajduje dobre rozwiązania problemu komiwojażera dla obu badanych instancji.
+        \item \textbf{Skuteczność algorytmu}: Dla obu instancji uzyskano trasy o kosztach 423.83 (32 atrakcje) i 734.37 (80 atrakcji).
         
-        \item \textbf{Wpływ liczby mrówek}: Większa kolonia zwiększa jakość rozwiązań kosztem czasu obliczeń. Zalecana wartość: $m = 20-50$.
+        \item \textbf{Liczba mrówek}: Zwiększenie z 10 do 100 mrówek daje poprawę o około 20 jednostek. Zalecana wartość: $m = 20$--$50$.
         
-        \item \textbf{Losowy wybór}: Niewielkie prawdopodobieństwo losowego wyboru ($p_{random} = 0.01$) może pomóc w eksploracji, ale zbyt duże wartości pogarszają wyniki.
+        \item \textbf{Prawdopodobieństwo losowego wyboru}: Wartości $p_{random} > 0.01$ znacząco pogarszają wyniki (nawet o 200 jednostek dla $p_{random} = 0.1$). Zalecane: $p_{random} \leq 0.01$.
         
-        \item \textbf{Balans $\alpha$ i $\beta$}: Typowe wartości $\alpha = 1.0$ i $\beta = 2.0$ dają dobre wyniki. Można dostosować w zależności od charakterystyki problemu.
+        \item \textbf{Wpływ heurystyki ($\beta$)}: Wyższe wartości ($\beta = 5.0$--$10.0$) dają lepsze wyniki niż standardowe $\beta = 2.0$. Silniejsza preferencja bliskich wierzchołków poprawia jakość tras.
         
-        \item \textbf{Liczba iteracji}: Więcej iteracji poprawia wyniki, ale z malejącym efektem. Dla badanych instancji $T = 100-500$ jest wystarczające.
+        \item \textbf{Wpływ feromonów ($\alpha$)}: Optymalne wartości to $\alpha = 1.0$--$2.0$. Zbyt niskie ($\alpha = 0.5$) osłabia uczenie, zbyt wysokie ($\alpha = 5.0$) przyspiesza przedwczesną zbieżność.
         
-        \item \textbf{Wyparowywanie}: Wartość $\rho = 0.5$ stanowi dobry kompromis między eksploracją a eksploatacją.
+        \item \textbf{Liczba iteracji}: Różnica między 100 a 1000 iteracji wynosi około 15 jednostek --- algorytm szybko osiąga stabilizację.
+        
+        \item \textbf{Współczynnik wyparowywania}: Wartość $\rho = 0.1$ daje gorsze wyniki, natomiast $\rho \in \{0.3, 0.5, 0.8\}$ działają porównywalnie.
     \end{itemize}
 
-    \subsection{Rekomendacje parametrów}
+    \subsection{Rekomendowane parametry}
     
-    Na podstawie eksperymentów rekomendujemy następujące zakresy parametrów:
+    Na podstawie naszych eksperymentów sugerujemy:
     \begin{center}
         \begin{tabular}{ll}
             \toprule
             \textbf{Parametr} & \textbf{Zalecana wartość} \\
             \midrule
             Liczba mrówek ($m$) & 20--50 \\
-            Wpływ feromonów ($\alpha$) & 1.0 \\
-            Wpływ heurystyki ($\beta$) & 2.0--5.0 \\
+            Wpływ feromonów ($\alpha$) & 1.0--2.0 \\
+            Wpływ heurystyki ($\beta$) & 5.0--10.0 \\
             Wyparowywanie ($\rho$) & 0.3--0.5 \\
             Iteracje ($T$) & 100--500 \\
             Losowy wybór ($p_{random}$) & 0.0--0.01 \\
             \bottomrule
         \end{tabular}
     \end{center}
+    
+    Warto zauważyć, że zalecane wartości $\beta$ są wyższe niż typowe wartości literaturowe ($\beta = 2$--$5$), co sugeruje, że dla problemu TSP silniejsza heurystyka odległościowa jest korzystna.
 
     \subsection{Ograniczenia eksperymentu}
     
     \begin{itemize}
-        \item Ograniczony czas obliczeń --- nie testowano pełnego gridu parametrów.
-        \item Każda konfiguracja była uruchomiona 5 razy --- większa liczba powtórzeń dałaby dokładniejsze statystyki.
-        \item Testowano tylko dwa rozmiary instancji (32 i 80 atrakcji).
-        \item Nie testowano innych wariantów ACO (np. MMAS, ACS).
+        \item Każda konfiguracja była uruchomiona 5 razy --- większa liczba powtórzeń zwiększyłaby wiarygodność statystyczną.
+        \item Testowano tylko dwie instancje (32 i 80 atrakcji) --- generalizacja wniosków na większe problemy wymaga dodatkowych badań.
     \end{itemize}
 
 \end{document}
