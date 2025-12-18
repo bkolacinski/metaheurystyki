@@ -312,11 +312,20 @@ def _update_pheromones(self, ants):
     \end{itemize}
     
     Dla każdej konfiguracji algorytm był uruchamiany 5 razy w celu uzyskania statystyk.
+    Poniżej przedstawione wnioski są z eksperymentów dla pliku \textbf{A-n80-k10}.
 
+    \newpage
     \subsection{Wpływ liczby mrówek ($m$)}
     
     Badano wartości: $m \in \{10, 20, 50, 100\}$.
     
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{../plots/A-n80-k10/influence_m.png}
+        \caption{Wpływ liczby mrówek na jakość rozwiązania.}
+        \label{fig:influence_population}
+    \end{figure}
+
     Większa liczba mrówek zwiększa eksplorację przestrzeni rozwiązań, co zazwyczaj prowadzi do lepszych wyników.
     Jednak wiąże się to z dłuższym czasem obliczeń.
     
@@ -327,10 +336,18 @@ def _update_pheromones(self, ants):
         \item Optymalna wartość to $m \approx 20-50$ dla badanych instancji.
     \end{itemize}
 
+    \newpage
     \subsection{Wpływ prawdopodobieństwa losowego wyboru ($p_{random}$)}
     
     Badano wartości: $p_{random} \in \{0.0, 0.01, 0.05, 0.1\}$.
     
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{../plots/A-n80-k10/influence_p_random.png}
+        \caption{Wpływ prawdopodobieństwa losowego wyboru na jakość rozwiązania.}
+        \label{fig:influence_p_random}
+    \end{figure}
+
     Parametr ten kontroluje eksplorację vs eksploatację.
     
     \textbf{Obserwacje:}
@@ -340,9 +357,17 @@ def _update_pheromones(self, ants):
         \item Najlepsze wyniki uzyskano dla $p_{random} = 0$ lub $p_{random} = 0.01$.
     \end{itemize}
 
+    \newpage
     \subsection{Wpływ współczynnika $\alpha$ (wpływ feromonów)}
     
     Badano wartości: $\alpha \in \{0.5, 1.0, 2.0, 5.0\}$.
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{../plots/A-n80-k10/influence_alpha.png}
+        \caption{Wpływ współczynnika $\alpha$ na jakość rozwiązania.}
+        \label{fig:influence_alpha}
+    \end{figure}
     
     \textbf{Obserwacje:}
     \begin{itemize}
@@ -351,9 +376,17 @@ def _update_pheromones(self, ants):
         \item Zbyt niskie wartości osłabiają wpływ uczenia się z poprzednich iteracji.
     \end{itemize}
 
+    \newpage
     \subsection{Wpływ współczynnika $\beta$ (wpływ heurystyki)}
     
     Badano wartości: $\beta \in \{1.0, 2.0, 5.0, 10.0\}$.
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{../plots/A-n80-k10/influence_beta.png}
+        \caption{Wpływ współczynnika $\beta$ na jakość rozwiązania.}
+        \label{fig:influence_beta}
+    \end{figure}
     
     \textbf{Obserwacje:}
     \begin{itemize}
@@ -362,9 +395,17 @@ def _update_pheromones(self, ants):
         \item Dla mniejszych instancji wyższe $\beta$ może być korzystne.
     \end{itemize}
 
+    \newpage
     \subsection{Wpływ liczby iteracji ($T$)}
     
     Badano wartości: $T \in \{100, 500, 1000\}$.
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{../plots/A-n80-k10/influence_iterations.png}
+        \caption{Wpływ liczby iteracji na jakość rozwiązania.}
+        \label{fig:influence_iterations}
+    \end{figure}
     
     \textbf{Obserwacje:}
     \begin{itemize}
@@ -373,9 +414,17 @@ def _update_pheromones(self, ants):
         \item Dla większej instancji (80 atrakcji) korzystne jest $T \geq 500$.
     \end{itemize}
 
+    \newpage
     \subsection{Wpływ współczynnika wyparowywania ($\rho$)}
     
     Badano wartości: $\rho \in \{0.1, 0.3, 0.5, 0.8\}$.
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{../plots/A-n80-k10/influence_m.png}
+        \caption{Wpływ współczynnika wyparowywania $\rho$ na jakość rozwiązania.}
+        \label{fig:influence_evaporation}
+    \end{figure}
     
     \textbf{Obserwacje:}
     \begin{itemize}
