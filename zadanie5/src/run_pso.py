@@ -16,19 +16,13 @@ def run_experiment(name, func, bounds, extrema, swarm_size=50, iterations=100):
         bounds=bounds,
         func=func,
         w=0.7,
-        c1=1.49,
-        c2=1.49,
+        c1=0.3,
+        c2=0.3,
         maximize=False,
-        use_randomness=True,
+        use_randomness=False,
     )
 
-    output = pso.run(iterations=iterations)
-
-    try:
-        (best_pos, best_fit_internal), time_ms = output
-    except ValueError:
-        print("Error unpacking output.")
-        return
+    (best_pos, best_fit_internal), time_ms = pso.run(iterations=iterations)
 
     plots_path = "../plots"
     os.makedirs(plots_path, exist_ok=True)
