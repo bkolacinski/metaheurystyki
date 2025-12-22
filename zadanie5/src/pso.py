@@ -71,8 +71,11 @@ class PSO:
 
     def _update_position(self) -> None:
         self.positions += self.velocities
-        self.positions = np.clip(
-            self.positions, self._bounds[:, 0], self._bounds[:, 1]
+        np.clip(
+            self.positions,
+            self._bounds[:, 0],
+            self._bounds[:, 1],
+            out=self.positions,
         )
 
     def _evaluate(self) -> None:

@@ -23,11 +23,11 @@ def beale_function_batch(
     xs = args[:, 0]
     ys = args[:, 1]
 
-    xs_ys = xs * ys
-    xs_ys_ys = xs * ys * ys
-    xs_ys_ys_ys = xs * ys * ys * ys
+    prod_xy = xs * ys
+    prod_xy2 = prod_xy * ys
+    prod_xy3 = prod_xy2 * ys
 
-    part_1 = 1.5 - xs + xs_ys
-    part_2 = 2.25 - xs + xs_ys_ys
-    part_3 = 2.625 - xs + xs_ys_ys_ys
+    part_1 = 1.5 - xs + prod_xy
+    part_2 = 2.25 - xs + prod_xy2
+    part_3 = 2.625 - xs + prod_xy3
     return part_1 * part_1 + part_2 * part_2 + part_3 * part_3
