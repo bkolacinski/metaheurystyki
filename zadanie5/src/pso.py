@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, List
 
 import numpy as np
 from numpy.typing import NDArray
@@ -23,6 +23,7 @@ class PSO:
         self._c2 = c2
         self._use_randomness = use_randomness
         self._bounds = bounds
+        self._maximize = maximize
 
         self._func = (lambda x: -func(x)) if not maximize else func
 
@@ -52,6 +53,8 @@ class PSO:
         self.g_best_position: NDArray[np.floating] = np.zeros(self._dim)
 
         self.g_best_fitness: float = -float("inf")
+
+        self.convergence_history: List[float] = []
 
         self._evaluate()
 
@@ -94,9 +97,27 @@ class PSO:
 
     @timer
     def run(self, iterations: int) -> tuple[NDArray[np.floating], float]:
+        self._record_convergence()
+
         for _ in range(iterations):
             self._update_velocity()
             self._update_position()
             self._evaluate()
+            self._record_convergence()
 
         return self.g_best_position, self.g_best_fitness
+
+    def _record_convergence(self) -> None:
+        if self._maximize:
+            self.convergence_history.append(self.g_best_fitness)
+        else:
+            self.convergence_history.append(-self.g_best_fitness)
+
+    def get_convergence_history(self) -> List[float]:
+        return self.convergence_history.copy()
+
+    def get_best_result(self) -> tuple[NDArray[np.floating], float]:
+        if self._maximize:
+            return self.g_best_position.copy(), self.g_best_fitness
+        else:
+            return self.g_best_position.copy(), -self.g_best_fitness

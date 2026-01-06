@@ -1,0 +1,666 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[polish]{babel}
+\usepackage[a4paper, margin=3cm]{geometry}
+\usepackage{array}
+\usepackage{tocloft}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{float}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2
+}
+
+\lstset{style=mystyle}
+\renewcommand{\lstlistingname}{Kod}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=black,
+    urlcolor=blue
+}
+
+\renewcommand{\cftsecleader}{\cftdotfill{\cftdotsep}}
+
+\begin{document}
+    \title{Metaheurystyki --- zadanie 5 \\
+    \large Algorytm roju cząstek (PSO) \\
+    \small GRUPA 3 --- piątek 10:15}
+    \date{\today}
+    \author{
+        Bartosz Kołaciński \\
+        251554
+        \and
+        Nikodem Nowak \\
+        251598
+    }
+    \maketitle
+
+    \vfill
+    \begin{center}
+        \begin{tabular}{lr}
+            \toprule
+            \textbf{Użyte technologie} & Python 3.13 \\
+            \midrule
+            \textbf{Użyte biblioteki} & \begin{tabular}[t]{@{}r@{}}
+                numpy, scipy, pandas, \\
+                matplotlib.pyplot
+            \end{tabular} \\
+            \bottomrule
+        \end{tabular}
+    \end{center}
+    \vspace{1cm}
+
+    \newpage
+
+    \tableofcontents
+
+    \newpage
+
+    \section{Opis zasad działania algorytmu}
+    
+    \subsection{Opis problemu}
+    
+    Problem polega na znalezieniu minimum globalnego funkcji dwóch zmiennych $f(x, y)$.
+    Jest to klasyczny problem optymalizacji ciągłej, gdzie celem jest znalezienie takiego punktu $(x^*, y^*)$ w zadanej dziedzinie, dla którego wartość funkcji jest najmniejsza.
+    
+    W ramach zadania wybrano dwie funkcje testowe:
+    \begin{itemize}
+        \item \textbf{Funkcja Himmelblau} --- posiada 4 minima globalne o wartości 0
+        \item \textbf{Funkcja Beale} --- posiada 1 minimum globalne o wartości 0
+    \end{itemize}
+
+    \subsection{Opis algorytmu PSO}
+    
+    Algorytm roju cząstek (ang. \textit{Particle Swarm Optimization}, PSO) to metaheurystyka inspirowana zachowaniem stadnym ptaków i ławic ryb.
+    Każda cząstka w roju reprezentuje potencjalne rozwiązanie problemu i porusza się w przestrzeni poszukiwań, kierując się własnym doświadczeniem oraz informacją od pozostałych cząstek.
+    
+    \subsubsection{Pseudokod algorytmu}
+    
+    \begin{algorithm}[H]
+    \caption{Algorytm roju cząstek (PSO)}
+    \begin{algorithmic}[1]
+    \State \textbf{Inicjalizacja:}
+    \State Zainicjuj pozycje cząstek $x_i$ losowo w przestrzeni poszukiwań
+    \State Zainicjuj prędkości cząstek $v_i \gets 0$
+    \State Dla każdej cząstki: $p_{best,i} \gets x_i$ (najlepsza pozycja lokalna)
+    \State $g_{best} \gets$ najlepsza pozycja spośród wszystkich cząstek (globalna)
+    \For{$t = 1$ \textbf{to} $T$ (liczba iteracji)}
+        \For{każda cząstka $i = 1, \ldots, N$}
+            \State \textbf{Aktualizacja prędkości:}
+            \State $v_i \gets w \cdot v_i + c_1 \cdot r_1 \cdot (p_{best,i} - x_i) + c_2 \cdot r_2 \cdot (g_{best} - x_i)$
+            \State \textbf{Aktualizacja pozycji:}
+            \State $x_i \gets x_i + v_i$
+            \State Ogranicz $x_i$ do granic przestrzeni poszukiwań
+            \State \textbf{Ewaluacja:}
+            \State Oblicz wartość funkcji celu $f(x_i)$
+            \If{$f(x_i) < f(p_{best,i})$}
+                \State $p_{best,i} \gets x_i$
+            \EndIf
+            \If{$f(x_i) < f(g_{best})$}
+                \State $g_{best} \gets x_i$
+            \EndIf
+        \EndFor
+    \EndFor
+    \State \Return $g_{best}$ (najlepsza znaleziona pozycja)
+    \end{algorithmic}
+    \end{algorithm}
+
+    \subsubsection{Składniki algorytmu}
+    
+    \begin{itemize}
+        \item \textbf{Pozycja cząstki ($x_i$)} --- aktualna lokalizacja cząstki w przestrzeni poszukiwań, reprezentująca potencjalne rozwiązanie problemu.
+        
+        \item \textbf{Prędkość cząstki ($v_i$)} --- wektor określający kierunek i szybkość ruchu cząstki w następnej iteracji.
+        
+        \item \textbf{Najlepsza pozycja lokalna ($p_{best}$)} --- najlepsza pozycja znaleziona przez daną cząstkę w całej historii jej ruchu. Reprezentuje ''pamięć'' cząstki.
+        
+        \item \textbf{Najlepsza pozycja globalna ($g_{best}$)} --- najlepsza pozycja znaleziona przez którąkolwiek cząstkę w całym roju. Reprezentuje ''wiedzę zbiorową'' roju.
+        
+        \item \textbf{Składowa inercyjna ($w \cdot v_i$)} --- utrzymuje dotychczasowy kierunek ruchu cząstki. Wysoka wartość $w$ sprzyja eksploracji, niska --- eksploatacji.
+        
+        \item \textbf{Składowa kognitywna ($c_1 \cdot r_1 \cdot (p_{best} - x)$)} --- przyciąga cząstkę do jej własnej najlepszej pozycji. Reprezentuje ''indywidualne doświadczenie''.
+        
+        \item \textbf{Składowa socjalna ($c_2 \cdot r_2 \cdot (g_{best} - x)$)} --- przyciąga cząstkę do najlepszej pozycji w roju. Reprezentuje ''wpływ społeczny''.
+    \end{itemize}
+
+    \subsubsection{Parametry algorytmu}
+    
+    \begin{center}
+        \begin{tabular}{lp{10cm}}
+            \toprule
+            \textbf{Parametr} & \textbf{Opis} \\
+            \midrule
+            $N$ (swarm\_size) & Liczba cząstek w roju \\
+            $T$ (iterations) & Liczba iteracji algorytmu \\
+            $w$ & Współczynnik inercji --- kontroluje wpływ poprzedniej prędkości \\
+            $c_1$ & Współczynnik kognitywny --- siła przyciągania do własnego najlepszego \\
+            $c_2$ & Współczynnik socjalny --- siła przyciągania do globalnego najlepszego \\
+            $r_1, r_2$ & Liczby losowe z przedziału $[0, 1]$ --- wprowadzają element stochastyczny \\
+            \bottomrule
+        \end{tabular}
+    \end{center}
+
+    \newpage
+    
+    \section{Opis implementacji rozwiązania}
+
+    \subsection{Inicjalizacja pozycji cząstek}
+    
+    Pozycje początkowe cząstek są generowane za pomocą metody Latin Hypercube Sampling (LHS), która zapewnia równomierne pokrycie przestrzeni poszukiwań.
+
+    \begin{lstlisting}[language=Python, caption={Inicjalizacja pozycji metodą LHS}]
+from scipy.stats import qmc
+
+sampler = qmc.LatinHypercube(d=self._dim)
+samples = sampler.random(n=swarm_size)
+
+self.positions = qmc.scale(samples, lower_bounds, upper_bounds)
+
+self.velocities = np.zeros((swarm_size, self._dim))
+
+self.p_best_positions = self.positions.copy()
+self.p_best_fitness = np.full(swarm_size, -np.inf)
+
+self.g_best_position = np.zeros(self._dim)
+self.g_best_fitness = -float("inf")
+    \end{lstlisting}
+
+    \subsection{Aktualizacja prędkości}
+    
+    Prędkość każdej cząstki jest aktualizowana zgodnie ze wzorem PSO, uwzględniając składową inercyjną, kognitywną i socjalną.
+
+    \begin{lstlisting}[language=Python, caption={Aktualizacja prędkości cząstek}]
+def _update_velocity(self) -> None:
+    if self._use_randomness:
+        r1 = np.random.rand(*self.positions.shape)
+        r2 = np.random.rand(*self.positions.shape)
+    else:
+        r1 = 1.0
+        r2 = 1.0
+
+    self.velocities = (
+        self._w * self.velocities
+        + self._c1 * r1 * (self.p_best_positions - self.positions)
+        + self._c2 * r2 * (self.g_best_position - self.positions)
+    )
+    \end{lstlisting}
+
+    \subsection{Aktualizacja pozycji}
+    
+    Pozycje cząstek są aktualizowane przez dodanie wektora prędkości, a następnie ograniczane do granic przestrzeni poszukiwań.
+
+    \begin{lstlisting}[language=Python, caption={Aktualizacja pozycji z ograniczeniem do granic}]
+def _update_position(self) -> None:
+    self.positions += self.velocities
+    np.clip(
+        self.positions,
+        self._bounds[:, 0],
+        self._bounds[:, 1],
+        out=self.positions,
+    )
+    \end{lstlisting}
+
+    \subsection{Ewaluacja i aktualizacja najlepszych pozycji}
+    
+    Po każdej aktualizacji pozycji, obliczana jest wartość funkcji celu i aktualizowane są najlepsze pozycje lokalne oraz globalna.
+
+    \begin{lstlisting}[language=Python, caption={Ewaluacja i aktualizacja p\_best oraz g\_best}]
+def _evaluate(self) -> None:
+    current_fitness = self._func(self.positions)
+
+    mask = current_fitness > self.p_best_fitness
+    self.p_best_positions[mask] = self.positions[mask]
+    self.p_best_fitness[mask] = current_fitness[mask]
+
+    current_best_idx = np.argmax(self.p_best_fitness)
+    if self.p_best_fitness[current_best_idx] > self.g_best_fitness:
+        self.g_best_fitness = self.p_best_fitness[current_best_idx]
+        self.g_best_position = self.p_best_positions[current_best_idx].copy()
+    \end{lstlisting}
+
+    \subsection{Główna pętla algorytmu}
+    
+    \begin{lstlisting}[language=Python, caption={Główna pętla algorytmu PSO}]
+def run(self, iterations: int) -> tuple[NDArray, float]:
+    self._record_convergence()
+
+    for _ in range(iterations):
+        self._update_velocity()
+        self._update_position()
+        self._evaluate()
+        self._record_convergence()
+
+    return self.g_best_position, self.g_best_fitness
+    \end{lstlisting}
+
+    \newpage
+
+    \section{Opis wybranych funkcji testowych}
+
+    \subsection{Funkcja Himmelblau}
+    
+    Funkcja Himmelblau jest popularną funkcją testową w optymalizacji, charakteryzującą się czterema minimami globalnymi.
+    
+    \textbf{Wzór:}
+    \begin{equation}
+        f(x, y) = (x^2 + y - 11)^2 + (x + y^2 - 7)^2
+    \end{equation}
+    
+    \textbf{Dziedzina:} $-5 \leq x, y \leq 5$
+    
+    \textbf{Minima globalne:} Funkcja posiada 4 minima globalne o wartości $f = 0$:
+    \begin{itemize}
+        \item $(3.0, 2.0)$
+        \item $(-2.805118, 3.131312)$
+        \item $(-3.779310, -3.283186)$
+        \item $(3.584428, -1.848126)$
+    \end{itemize}
+
+    \begin{lstlisting}[language=Python, caption={Implementacja funkcji Himmelblau}]
+def himmelblau_function_batch(args: NDArray) -> NDArray:
+    xs = args[:, 0]
+    ys = args[:, 1]
+    part_1 = xs * xs + ys - 11
+    part_2 = xs + ys * ys - 7
+    return part_1 * part_1 + part_2 * part_2
+    \end{lstlisting}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{../plots/himmelblau_heatmap.png}
+        \caption{Mapa cieplna funkcji Himmelblau. Ciemniejsze obszary oznaczają niższe wartości funkcji. Czerwone krzyżyki wskazują położenie czterech minimów globalnych.}
+        \label{fig:himmelblau_heatmap}
+    \end{figure}
+
+    \newpage
+    
+    \subsection{Funkcja Beale}
+    
+    Funkcja Beale jest funkcją testową z jednym minimum globalnym, charakteryzującą się płaskim dnem doliny, co utrudnia precyzyjne znalezienie optimum.
+    
+    \textbf{Wzór:}
+    \begin{equation}
+        f(x, y) = (1.5 - x + xy)^2 + (2.25 - x + xy^2)^2 + (2.625 - x + xy^3)^2
+    \end{equation}
+    
+    \textbf{Dziedzina:} $-4.5 \leq x, y \leq 4.5$
+    
+    \textbf{Minimum globalne:} $f(3, 0.5) = 0$
+
+    \begin{lstlisting}[language=Python, caption={Implementacja funkcji Beale}]
+def beale_function_batch(args: NDArray) -> NDArray:
+    xs = args[:, 0]
+    ys = args[:, 1]
+
+    prod_xy = xs * ys
+    prod_xy2 = prod_xy * ys
+    prod_xy3 = prod_xy2 * ys
+
+    part_1 = 1.5 - xs + prod_xy
+    part_2 = 2.25 - xs + prod_xy2
+    part_3 = 2.625 - xs + prod_xy3
+    return part_1 * part_1 + part_2 * part_2 + part_3 * part_3
+    \end{lstlisting}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{../plots/beale_heatmap.png}
+        \caption{Mapa cieplna funkcji Beale. Czerwony krzyżyk wskazuje położenie jedynego minimum globalnego w punkcie $(3, 0.5)$.}
+        \label{fig:beale_heatmap}
+    \end{figure}
+
+    \newpage
+
+    \section{Instrukcja uruchomienia programu}
+
+    Program uruchamia się poprzez wywołanie pliku \texttt{run\_pso.py} w katalogu \texttt{src/}:
+    \begin{center}
+        \texttt{python run\_pso.py}
+    \end{center}
+    
+    Skrypt ten wykonuje pojedyncze uruchomienie algorytmu PSO dla obu funkcji testowych z domyślnymi parametrami i generuje mapy cieplne z zaznaczonymi znalezionymi rozwiązaniami.
+
+    \vspace{0.5cm}
+    
+    W celu wygenerowania wszystkich eksperymentów opisanych w dalszej części sprawozdania, należy uruchomić skrypt:
+    \begin{center}
+        \texttt{python all\_experiments.py}
+    \end{center}
+    
+    Skrypt ten wykonuje:
+    \begin{enumerate}
+        \item Badanie wpływu każdego parametru (w, c1, c2, swarm\_size, iterations)
+        \item Analizę zbieżności dla różnych konfiguracji
+        \item Wizualizację najlepszych znalezionych rozwiązań
+        \item Zapis wyników do plików CSV i wykresów PNG
+    \end{enumerate}
+
+    \vspace{0.5cm}
+    
+    \textbf{Plan eksperymentalny:}
+    \begin{itemize}
+        \item Każda konfiguracja parametrów jest uruchamiana \textbf{15 razy} (N\_RUNS = 15)
+        \item Dla każdego parametru badane są różne wartości przy stałych pozostałych parametrach bazowych
+        \item Parametry bazowe: swarm\_size=50, iterations=100, w=0.7, c1=1.5, c2=1.5
+    \end{itemize}
+
+    \vspace{0.5cm}
+    
+    Wyniki zapisywane są w katalogach:
+    \begin{itemize}
+        \item \texttt{../results/Himmelblau/} --- pliki CSV z wynikami dla funkcji Himmelblau
+        \item \texttt{../results/Beale/} --- pliki CSV z wynikami dla funkcji Beale
+        \item \texttt{../plots/Himmelblau/} --- wykresy dla funkcji Himmelblau
+        \item \texttt{../plots/Beale/} --- wykresy dla funkcji Beale
+    \end{itemize}
+
+    \newpage
+
+    \section{Eksperymenty i wyniki}
+
+    Przeprowadzono serię eksperymentów dla dwóch funkcji testowych. Dla każdej konfiguracji algorytm był uruchamiany 15 razy w celu zmniejszenia wpływu losowości.
+
+    \subsection{Najlepsze znalezione rozwiązania}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{../plots/Himmelblau/best_result_heatmap.png}
+        \caption{Najlepsza znaleziona pozycja dla funkcji Himmelblau. Gwiazdka oznacza znalezione rozwiązanie, które niemal idealnie pokrywa się z jednym z czterech minimów globalnych.}
+        \label{fig:best_himmelblau}
+    \end{figure}
+
+    Dla funkcji Himmelblau algorytm PSO skutecznie znajduje jedno z czterech minimów globalnych. Najlepszy uzyskany wynik to $f \approx 1.13 \times 10^{-25}$, co jest praktycznie równe wartości teoretycznej 0.
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{../plots/Beale/best_result_heatmap.png}
+        \caption{Najlepsza znaleziona pozycja dla funkcji Beale. Algorytm skutecznie odnajduje minimum globalne w punkcie $(3, 0.5)$.}
+        \label{fig:best_beale}
+    \end{figure}
+
+    Dla funkcji Beale najlepszy uzyskany wynik to $f \approx 4.13 \times 10^{-23}$, co również jest bardzo bliskie wartości teoretycznej 0.
+
+    \newpage
+    \subsection{Wpływ współczynnika inercji ($w$)}
+    
+    Badano wartości: $w \in \{0.0, 0.2, 0.4, 0.6, 0.8, 1.0\}$.
+    
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{../plots/Himmelblau/influence_w.png}
+        \caption{Wpływ współczynnika inercji na średnią wartość funkcji Himmelblau.}
+        \label{fig:influence_w_himmelblau}
+    \end{figure}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{../plots/Himmelblau/boxplot_w.png}
+        \caption{Rozkład wyników dla różnych wartości $w$ (Himmelblau).}
+        \label{fig:boxplot_w_himmelblau}
+    \end{figure}
+
+    \textbf{Obserwacje:}
+    \begin{itemize}
+        \item Dla funkcji Himmelblau najlepsze wyniki uzyskano dla $w = 0.2$, gdzie średni wynik wynosi $\approx 3.68 \times 10^{-31}$.
+        \item Zbyt wysoka wartość $w$ (np. 1.0) powoduje, że cząstki ''przelatują'' przez minima, co pogarsza zbieżność.
+        \item Zbyt niska wartość $w$ (0.0) eliminuje składową inercyjną, co może prowadzić do przedwczesnej zbieżności.
+        \item Optymalne wartości to $w \in [0.2, 0.6]$.
+    \end{itemize}
+
+    \newpage
+    \subsection{Wpływ współczynnika kognitywnego ($c_1$)}
+    
+    Badano wartości: $c_1 \in \{0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 1.0, 1.5, 2.0\}$.
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{../plots/Himmelblau/influence_c1.png}
+        \caption{Wpływ współczynnika kognitywnego na średnią wartość funkcji Himmelblau.}
+        \label{fig:influence_c1_himmelblau}
+    \end{figure}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{../plots/Himmelblau/boxplot_c1.png}
+        \caption{Rozkład wyników dla różnych wartości $c_1$ (Himmelblau).}
+        \label{fig:boxplot_c1_himmelblau}
+    \end{figure}
+
+    \textbf{Obserwacje:}
+    \begin{itemize}
+        \item Najlepsze wyniki dla Himmelblau uzyskano przy $c_1 = 0.3$ (średnia $\approx 3.35 \times 10^{-13}$).
+        \item Wartość $c_1 = 0.0$ oznacza brak składowej kognitywnej --- cząstki nie pamiętają swoich najlepszych pozycji.
+        \item Zbyt wysokie wartości $c_1$ (np. 2.0) mogą powodować oscylacje wokół najlepszych pozycji lokalnych.
+        \item Umiarkowane wartości $c_1 \in [0.3, 1.5]$ zapewniają dobrą równowagę.
+    \end{itemize}
+
+    \newpage
+    \subsection{Wpływ współczynnika socjalnego ($c_2$)}
+    
+    Badano wartości: $c_2 \in \{0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 1.0, 1.5, 2.0\}$.
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{../plots/Himmelblau/influence_c2.png}
+        \caption{Wpływ współczynnika socjalnego na średnią wartość funkcji Himmelblau.}
+        \label{fig:influence_c2_himmelblau}
+    \end{figure}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{../plots/Himmelblau/boxplot_c2.png}
+        \caption{Rozkład wyników dla różnych wartości $c_2$ (Himmelblau).}
+        \label{fig:boxplot_c2_himmelblau}
+    \end{figure}
+
+    \textbf{Obserwacje:}
+    \begin{itemize}
+        \item Najlepsze wyniki dla Himmelblau uzyskano przy $c_2 = 0.5$ (średnia $\approx 1.16 \times 10^{-14}$).
+        \item Wartość $c_2 = 0.0$ eliminuje wpływ społeczny --- każda cząstka działa niezależnie.
+        \item Zbyt wysokie $c_2$ powoduje zbyt szybką zbieżność wszystkich cząstek do jednego punktu (przedwczesna konwergencja).
+        \item Optymalne wartości to $c_2 \in [0.3, 1.5]$.
+    \end{itemize}
+
+    \newpage
+    \subsection{Wpływ rozmiaru roju (swarm\_size)}
+    
+    Badano wartości: swarm\_size $\in \{5, 10, 20, 50, 100\}$.
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{../plots/Himmelblau/influence_swarm_size.png}
+        \caption{Wpływ rozmiaru roju na średnią wartość funkcji Himmelblau.}
+        \label{fig:influence_swarm_himmelblau}
+    \end{figure}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{../plots/Himmelblau/boxplot_swarm_size.png}
+        \caption{Rozkład wyników dla różnych rozmiarów roju (Himmelblau).}
+        \label{fig:boxplot_swarm_himmelblau}
+    \end{figure}
+
+    \textbf{Obserwacje:}
+    \begin{itemize}
+        \item Większy rój generalnie daje lepsze wyniki --- więcej cząstek oznacza lepsze pokrycie przestrzeni poszukiwań.
+        \item Dla swarm\_size = 100 uzyskano najlepsze średnie wyniki ($\approx 4.43 \times 10^{-13}$).
+        \item Mały rój (5--10 cząstek) może nie być wystarczający do efektywnej eksploracji.
+        \item Zwiększanie rozmiaru roju powyżej 50--100 daje malejące korzyści przy rosnącym koszcie obliczeniowym.
+    \end{itemize}
+
+    \newpage
+    \subsection{Wpływ liczby iteracji}
+    
+    Badano wartości: iterations $\in \{5, 10, 20, 50, 100\}$.
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{../plots/Himmelblau/influence_iterations.png}
+        \caption{Wpływ liczby iteracji na średnią wartość funkcji Himmelblau.}
+        \label{fig:influence_iter_himmelblau}
+    \end{figure}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{../plots/Himmelblau/boxplot_iterations.png}
+        \caption{Rozkład wyników dla różnej liczby iteracji (Himmelblau).}
+        \label{fig:boxplot_iter_himmelblau}
+    \end{figure}
+
+    \textbf{Obserwacje:}
+    \begin{itemize}
+        \item Więcej iteracji pozwala na dokładniejsze zbliżenie się do minimum.
+        \item Przy 100 iteracjach uzyskano najlepsze wyniki ($\approx 5.61 \times 10^{-12}$).
+        \item Algorytm szybko osiąga dobre przybliżenie --- już po 20--50 iteracjach wyniki są bliskie optimum.
+        \item Dla prostych funkcji jak Himmelblau, 50--100 iteracji jest zazwyczaj wystarczające.
+    \end{itemize}
+
+    \newpage
+    \subsection{Analiza zbieżności}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{../plots/Himmelblau/convergence_analysis.png}
+        \caption{Analiza zbieżności dla funkcji Himmelblau przy różnych wartościach współczynnika inercji. Kolorowe obramowanie pokazuje odchylenie standardowe z 15 uruchomień.}
+        \label{fig:convergence_himmelblau}
+    \end{figure}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{../plots/Beale/convergence_analysis.png}
+        \caption{Analiza zbieżności dla funkcji Beale przy różnych wartościach współczynnika inercji.}
+        \label{fig:convergence_beale}
+    \end{figure}
+
+    \textbf{Obserwacje:}
+    \begin{itemize}
+        \item Algorytm PSO wykazuje szybką zbieżność --- większość poprawy następuje w pierwszych 20--50 iteracjach.
+        \item Niska inercja ($w = 0.3$) prowadzi do szybszej początkowej zbieżności, ale może utknąć w lokalnym minimum. Dla tej wartości osiągnięto najlepszy wynik, ale ta wartość może być zła dla bardziej skomplikowanych funkcji.
+        \item Wysoka inercja ($w = 0.9$) pozwala na dłuższą eksplorację, ale zbieżność jest wolniejsza.
+        \item Średnia inercja ($w = 0.7$) stanowi dobry kompromis między eksploracją a eksploatacją.
+    \end{itemize}
+
+    \newpage
+
+    \section{Analiza wyników}
+
+    Na podstawie przeprowadzonych eksperymentów można odpowiedzieć na kluczowe pytania dotyczące algorytmu PSO:
+
+    \subsection{Jak wybrane parametry wpływają na jakość wyników?}
+
+    \begin{itemize}
+        \item \textbf{Współczynnik inercji ($w$):} Jest to najważniejszy parametr algorytmu. Decyduje o tym, czy cząstki będą bardziej eksplorować przestrzeń (wysokie $w$), czy skupią się na eksploatacji znalezionych rozwiązań (niskie $w$). W naszych eksperymentach najlepsze wyniki uzyskano dla $w \in [0.2, 0.8]$. Przy zbyt niskiej wartości algorytm zbyt szybko zbiegał do pierwszego znalezionego minimum, a przy zbyt wysokiej --- cząstki poruszały się chaotycznie.
+        
+        \item \textbf{Współczynniki $c_1$ i $c_2$:} Parametr $c_1$ określa, jak bardzo cząstka ufa swojemu dotychczasowemu doświadczeniu (komponent poznawczy), a $c_2$ --- jak bardzo podąża za najlepszym rozwiązaniem całego roju (komponent społeczny). W naszej implementacji użyliśmy domyślnych wartości $c_1 = c_2 = 1.5$, które zapewniają zrównoważony wpływ obu komponentów na ruch cząstek. Takie ustawienie pozwala cząstkom zarówno eksplorować okolice własnych najlepszych pozycji, jak i zbiegać do globalnie najlepszego rozwiązania.
+        
+        \item \textbf{Rozmiar roju:} Im więcej cząstek, tym lepiej przeszukiwana jest przestrzeń rozwiązań, ale rośnie też czas obliczeń. W praktyce 50--100 cząstek okazało się wystarczające dla testowanych funkcji.
+        
+        \item \textbf{Liczba iteracji:} Algorytm PSO szybko znajduje dobre przybliżenie rozwiązania. Dla dwuwymiarowych funkcji testowych 50--100 iteracji w zupełności wystarczało do osiągnięcia satysfakcjonujących wyników.
+    \end{itemize}
+
+    \subsection{Czy algorytm jest stabilny?}
+
+    Analiza odchylenia standardowego pokazuje, że:
+    \begin{itemize}
+        \item Dla funkcji Himmelblau algorytm jest bardzo stabilny --- odchylenie standardowe jest niskie ($\approx 4.89 \times 10^{-20}$).
+        \item Dla funkcji Beale stabilność jest nieco niższa (odch. std. $\approx 0.19$), co wynika z trudniejszego krajobrazu funkcji.
+        \item Stabilność wzrasta wraz z rozmiarem roju i liczbą iteracji.
+    \end{itemize}
+
+    \subsection{Czy zaobserwowano szybkie czy wolne zbieganie do rozwiązania?}
+
+    Algorytm PSO wykazuje \textbf{szybką zbieżność}:
+    \begin{itemize}
+        \item Większość poprawy następuje w pierwszych 20--50 iteracjach.
+        \item Po osiągnięciu okolic minimum, dalsza poprawa jest stopniowa.
+        \item Szybkość zbieżności zależy od współczynnika inercji --- niższa inercja przyspiesza początkową zbieżność.
+    \end{itemize}
+
+    \subsection{Czy pojawia się ryzyko utknięcia w minimum lokalnym?}
+
+    \begin{itemize}
+        \item Dla funkcji Himmelblau (4 minima globalne) algorytm zawsze znajduje jedno z nich --- nie ma minimów lokalnych.
+        \item Dla funkcji Beale ryzyko utknięcia jest niskie, ale istnieje --- w niektórych uruchomieniach wynik był gorszy (stąd wyższe odch. std.).
+        \item Większy rój i odpowiedni dobór parametrów minimalizują ryzyko utknięcia.
+    \end{itemize}
+
+    \subsection{Czy trudność obu funkcji była różna?}
+
+    Tak, funkcje różnią się trudnością:
+    \begin{itemize}
+        \item \textbf{Himmelblau} --- łatwiejsza, ponieważ ma 4 minima globalne (większa szansa trafienia).
+        \item \textbf{Beale} --- trudniejsza, ma płaskie dno doliny prowadzącej do minimum, co utrudnia precyzyjne zbliżenie.
+        \item Średnie wyniki dla Beale są gorsze ($\approx 0.05$) niż dla Himmelblau ($\approx 10^{-20}$).
+    \end{itemize}
+
+    \newpage
+
+    \section{Wnioski}
+
+    Na podstawie przeprowadzonych eksperymentów sformułowano następujące wnioski:
+
+    \begin{itemize}
+        \item \textbf{Skuteczność algorytmu:} PSO skutecznie znajduje minima globalne dla obu funkcji testowych. Dla Himmelblau uzyskano wyniki rzędu $10^{-25}$, dla Beale --- $10^{-23}$.
+        
+        \item \textbf{Współczynnik inercji ($w$):} Optymalne wartości to $w \in [0.2, 0.8]$. Najlepsze wyniki dla Himmelblau uzyskano przy $w = 0.2$, dla Beale przy $w = 0.8$.
+        
+        \item \textbf{Współczynniki kognitywny i socjalny:} Umiarkowane wartości $c_1, c_2 \in [0.3, 1.5]$ dają najlepsze rezultaty. Zbyt wysokie wartości prowadzą do oscylacji.
+        
+        \item \textbf{Rozmiar roju:} Większy rój (50--100 cząstek) poprawia jakość wyników, ale zwiększa czas obliczeń.
+        
+        \item \textbf{Liczba iteracji:} Algorytm szybko zbliża się do rozwiązania. 50--100 iteracji jest zazwyczaj wystarczające.
+        
+        \item \textbf{Szybkość zbieżności:} PSO charakteryzuje się szybką zbieżnością --- większość poprawy następuje w pierwszych 20--50 iteracjach.
+        
+        \item \textbf{Stabilność:} Algorytm jest stabilny, szczególnie dla funkcji Himmelblau. Dla trudniejszych funkcji (Beale) wariancja wyników jest wyższa.
+    \end{itemize}
+
+    \subsection{Rekomendowane parametry}
+
+    Na podstawie eksperymentów sugerujemy następujące wartości parametrów:
+
+    \begin{center}
+        \begin{tabular}{ll}
+            \toprule
+            \textbf{Parametr} & \textbf{Zalecana wartość} \\
+            \midrule
+            Rozmiar roju (swarm\_size) & 50--100 \\
+            Współczynnik inercji ($w$) & 0.7 \\
+            Współczynnik kognitywny ($c_1$) & 0.3--1.5 \\
+            Współczynnik socjalny ($c_2$) & 0.3--1.5 \\
+            Liczba iteracji & 50--100 \\
+            \bottomrule
+        \end{tabular}
+    \end{center}
+
+\end{document}
+
