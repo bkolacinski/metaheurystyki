@@ -41,21 +41,17 @@ def read_to_solomon_data(file_path: str) -> SolomonData:
         if not parts:
             continue
 
-        # Nagłówek danych klientów
-        if parts[0] == "CUST" and parts[1] == "NO.":
+        if start_parsing is False and parts[0] == "CUST" and parts[1] == "NO.":
             start_parsing = True
             continue
 
         if start_parsing:
             try:
-                # Format rzędu: [ID, X, Y, DEMAND, READY, DUE, SERVICE]
                 row: list[float] = [float(x) for x in parts]
                 customer_raw_data.append(row)
             except ValueError:
-                # Pomiń linie, które nie są danymi numerycznymi
                 continue
 
-    # Konwersja na macierz NumPy dla wydajności (Numba ją pokocha)
     data_matrix: np.ndarray = np.array(customer_raw_data, dtype=np.float64)
 
     result: SolomonData = {
