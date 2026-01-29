@@ -29,7 +29,7 @@ def run_multiple_times(
     q0: float,
     use_local_search: bool = True,
     verbose: bool = True,
-) -> Tuple[List, int, float, List[Dict]]:
+) -> Tuple:
     data = read_to_solomon_data(instance_path)
     dist_matrix = calculate_distance_matrix(data["coords"])
 
@@ -170,6 +170,7 @@ def run_multiple_times(
                     "n_vehicles": n_veh,
                     "distance": dist,
                     "time": run_time,
+                    "routes": routes,
                 }
             )
 
@@ -199,39 +200,89 @@ def run_multiple_times(
                     "n_vehicles": float("inf"),
                     "distance": float("inf"),
                     "time": 0,
+                    "routes": None,
                 }
             )
 
     total_time = time.time() - start_time
 
+    valid_results = [r for r in all_results if r["n_vehicles"] != float("inf")]
+
+    worst_distance = float("-inf")
+    worst_routes = None
+    worst_n_vehicles = 0
+    avg_routes = None
+    avg_distance = 0.0
+    avg_n_vehicles = 0
+    std_distance = 0.0
+
+    if valid_results:
+        distances = [r["distance"] for r in valid_results]
+        vehicles = [r["n_vehicles"] for r in valid_results]
+
+        for result in valid_results:
+            if result["distance"] > worst_distance:
+                worst_distance = result["distance"]
+                worst_routes = result.get("routes")
+                worst_n_vehicles = result["n_vehicles"]
+
+        avg_distance = sum(distances) / len(distances)
+        avg_n_vehicles = sum(vehicles) / len(vehicles)
+        std_distance = np.std(distances)
+
+        closest_to_avg = min(
+            valid_results, key=lambda r: abs(r["distance"] - avg_distance)
+        )
+        avg_routes = closest_to_avg.get("routes")
+
     if verbose:
         print("\n" + "=" * 70)
         print(f"Zakończono {n_runs} uruchomień w {total_time:.2f}s")
-        print(f"\n✓ NAJLEPSZE ROZWIĄZANIE:")
+        print("\n✓ NAJLEPSZY WYNIK:")
         print(f"  Pojazdy: {best_n_vehicles}")
         print(f"  Dystans: {best_distance:.2f}")
         print(f"  Liczba tras: {len(best_routes) if best_routes else 0}")
 
-        valid_results = [
-            r for r in all_results if r["n_vehicles"] != float("inf")
-        ]
         if valid_results:
-            vehicles = [r["n_vehicles"] for r in valid_results]
-            distances = [r["distance"] for r in valid_results]
+            print("\n✗ NAJGORSZY WYNIK:")
+            print(f"  Pojazdy: {worst_n_vehicles}")
+            print(f"  Dystans: {worst_distance:.2f}")
+
+            print("\n≈ ŚREDNI WYNIK:")
+            print(f"  Pojazdy: {avg_n_vehicles:.2f}")
+            print(f"  Dystans: {avg_distance:.2f}")
+
+            print("\nODCHYLENIE STANDARDOWE:")
+            print(f"  Dystans: {std_distance:.2f}")
+
+            print("\nCZAS OBLICZEŃ:")
+            print(f"  Całkowity: {total_time:.2f}s")
+            print(f"  Średni na uruchomienie: {total_time/n_runs:.2f}s")
+
+            vehicles_list = [r["n_vehicles"] for r in valid_results]
+            distances_list = [r["distance"] for r in valid_results]
             print(f"\nStatystyki ({len(valid_results)} udanych uruchomień):")
             print(
-                f"  Pojazdy - Min: {min(vehicles)}, Max: {max(vehicles)}, "
-                f"Średnia: {sum(vehicles)/len(vehicles):.2f}"
+                f"  Pojazdy - Min: {min(vehicles_list)}, Max: {max(vehicles_list)}, "
+                f"Średnia: {avg_n_vehicles:.2f}"
             )
             print(
-                f"  Dystans - Min: {min(distances):.2f}, Max: {max(distances):.2f}, "
-                f"Średnia: {sum(distances)/len(distances):.2f}"
+                f"  Dystans - Min: {min(distances_list):.2f}, Max: {max(distances_list):.2f}, "
+                f"Średnia: {avg_distance:.2f}, Std: {std_distance:.2f}"
             )
 
     return (
         best_routes,
         best_n_vehicles,
         best_distance,
+        worst_routes,
+        worst_n_vehicles,
+        worst_distance,
+        avg_routes,
+        avg_n_vehicles,
+        avg_distance,
+        std_distance,
+        total_time,
         all_results,
         data,
         dist_matrix,
@@ -246,6 +297,8 @@ def visualize_solution(
     distance: float,
     params: Dict,
     output_dir: str = "results",
+    suffix: str = "best_solution",
+    title_prefix: str = "Najlepsze rozwiązanie",
 ):
     sns.set_style("whitegrid")
 
@@ -314,7 +367,7 @@ def visualize_solution(
                 linewidths=1,
             )
 
-    title = f"Najlepsze rozwiązanie: {instance_name}\n"
+    title = f"{title_prefix}: {instance_name}\n"
     title += f"Pojazdy: {n_vehicles} | Dystans: {distance:.2f}\n"
     title += f"α={params['alpha']}, β={params['beta']}, ρ={params['rho']}, "
     title += f"q0={params['q0']}, mrówki={params['n_ants']}, iteracje={params['n_iterations']}"
@@ -331,11 +384,11 @@ def visualize_solution(
     os.makedirs(output_dir, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     instance_base = os.path.basename(instance_name).replace(".txt", "")
-    filename = f"{instance_base}_best_solution_{timestamp}.png"
+    filename = f"{instance_base}_{suffix}_{timestamp}.png"
     filepath = os.path.join(output_dir, filename)
 
     plt.savefig(filepath, dpi=300, bbox_inches="tight")
-    print(f"\nWykres zapisany: {filepath}")
+    print(f"Wykres zapisany: {filepath}")
 
     plt.close()
 
@@ -344,16 +397,22 @@ def save_statistics(
     all_results: List[Dict],
     instance_name: str,
     params: Dict,
+    best_distance: float,
+    worst_distance: float,
+    avg_distance: float,
+    std_distance: float,
+    total_time: float,
     output_dir: str = "results",
 ):
     os.makedirs(output_dir, exist_ok=True)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     instance_base = os.path.basename(instance_name).replace(".txt", "")
-    filename = f"{instance_base}_runs_{timestamp}.csv"
-    filepath = os.path.join(output_dir, filename)
 
-    with open(filepath, "w") as f:
+    csv_filename = f"{instance_base}_runs_{timestamp}.csv"
+    csv_filepath = os.path.join(output_dir, csv_filename)
+
+    with open(csv_filepath, "w") as f:
         f.write("run,n_vehicles,distance,time\n")
 
         for result in all_results:
@@ -362,7 +421,38 @@ def save_statistics(
                 f"{result['distance']:.2f},{result['time']:.2f}\n"
             )
 
-    print(f"Statystyki zapisane: {filepath}")
+    print(f"Statystyki zapisane: {csv_filepath}")
+
+    summary_filename = f"{instance_base}_summary_{timestamp}.txt"
+    summary_filepath = os.path.join(output_dir, summary_filename)
+
+    valid_results = [r for r in all_results if r["n_vehicles"] != float("inf")]
+
+    with open(summary_filepath, "w") as f:
+        f.write("=" * 70 + "\n")
+        f.write(f"PODSUMOWANIE WYNIKÓW: {instance_name}\n")
+        f.write("=" * 70 + "\n\n")
+
+        f.write("PARAMETRY:\n")
+        f.write(f"  n_ants: {params['n_ants']}\n")
+        f.write(f"  n_iterations: {params['n_iterations']}\n")
+        f.write(f"  alpha: {params['alpha']}\n")
+        f.write(f"  beta: {params['beta']}\n")
+        f.write(f"  rho: {params['rho']}\n")
+        f.write(f"  q0: {params['q0']}\n\n")
+
+        f.write("WYNIKI:\n")
+        f.write(f"  Najlepszy wynik: {best_distance:.2f}\n")
+        f.write(f"  Najgorszy wynik: {worst_distance:.2f}\n")
+        f.write(f"  Średni wynik: {avg_distance:.2f}\n")
+        f.write(f"  Odchylenie standardowe: {std_distance:.2f}\n")
+        f.write(f"  Czas obliczeń: {total_time:.2f}s\n\n")
+
+        f.write(f"Liczba uruchomień: {len(all_results)}\n")
+        f.write(f"Udane uruchomienia: {len(valid_results)}\n")
+        f.write("=" * 70 + "\n")
+
+    print(f"Podsumowanie zapisane: {summary_filepath}")
 
 
 def main():
@@ -449,6 +539,14 @@ def main():
         best_routes,
         best_n_vehicles,
         best_distance,
+        worst_routes,
+        worst_n_vehicles,
+        worst_distance,
+        avg_routes,
+        avg_n_vehicles,
+        avg_distance,
+        std_distance,
+        total_time,
         all_results,
         data,
         _,
@@ -469,7 +567,9 @@ def main():
         print("\n❌ BŁĄD: Nie znaleziono poprawnego rozwiązania!")
         sys.exit(1)
 
-    print("\nTworzenie wizualizacji...")
+    print("\n" + "=" * 70)
+    print("TWORZENIE WIZUALIZACJI")
+    print("=" * 70)
     visualize_solution(
         routes=best_routes,
         coords=data["coords"],
@@ -478,12 +578,45 @@ def main():
         distance=best_distance,
         params=params,
         output_dir=args.output,
+        suffix="best_solution",
+        title_prefix="Najlepsze rozwiązanie",
     )
+
+    if worst_routes:
+        visualize_solution(
+            routes=worst_routes,
+            coords=data["coords"],
+            instance_name=args.instance,
+            n_vehicles=worst_n_vehicles,
+            distance=worst_distance,
+            params=params,
+            output_dir=args.output,
+            suffix="worst_solution",
+            title_prefix="Najgorsze rozwiązanie",
+        )
+
+    if avg_routes:
+        visualize_solution(
+            routes=avg_routes,
+            coords=data["coords"],
+            instance_name=args.instance,
+            n_vehicles=int(avg_n_vehicles),
+            distance=avg_distance,
+            params=params,
+            output_dir=args.output,
+            suffix="avg_solution",
+            title_prefix="Średnie rozwiązanie",
+        )
 
     save_statistics(
         all_results=all_results,
         instance_name=args.instance,
         params=params,
+        best_distance=best_distance,
+        worst_distance=worst_distance,
+        avg_distance=avg_distance,
+        std_distance=std_distance,
+        total_time=total_time,
         output_dir=args.output,
     )
 
