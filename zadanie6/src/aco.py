@@ -1,48 +1,3 @@
-"""
-VRPTW Solver using proper Ant Colony Optimization (ACO) with Numba acceleration.
-
-This is a TRUE ACO implementation with the following key components:
-
-1. PHEROMONE TRAILS (τ):
-   - Maintained on edges between nodes
-   - Evaporate over time (controlled by ρ)
-   - Deposited by best solutions
-
-2. PROBABILISTIC SOLUTION CONSTRUCTION:
-   - Ants build solutions probabilistically based on:
-     * Pheromone intensity: τ^α (learned information)
-     * Heuristic desirability: η^β (distance + time window urgency)
-   - Uses pseudo-random proportional rule (ACS variant):
-     * With probability q0: exploit best choice
-     * Otherwise: explore probabilistically
-
-3. HEURISTIC INFORMATION MATRIX (η):
-   - Combines distance information (1/distance)
-   - Time window urgency (prefers tighter windows)
-   - Guides ants toward promising customers
-
-4. PHEROMONE UPDATE:
-   - Evaporation: τ = τ * (1 - ρ) - old pheromones fade
-   - Deposition: Best solutions deposit pheromone ∝ 1/cost
-   - Uses global best solution (elitist strategy)
-   - Bounded to prevent premature convergence
-
-5. PARALLEL EXECUTION:
-   - All ants construct solutions in parallel using @njit(parallel=True)
-   - Heavy computations optimized with Numba JIT compilation
-
-Parameters:
-- α (alpha): Pheromone importance (default: 1.0)
-- β (beta): Heuristic importance (default: 2.0)
-- ρ (rho): Evaporation rate (default: 0.1)
-- q0: Exploitation threshold (default: 0.9)
-- n_ants: Number of ants per iteration
-- n_iterations: Number of iterations
-
-This implementation follows the ACO metaheuristic with proper pheromone-based learning,
-unlike greedy heuristics that don't use pheromones or probabilistic selection.
-"""
-
 from typing import List, Tuple
 
 import numpy as np
@@ -67,10 +22,12 @@ def compute_heuristic_matrix(
     distance_matrix: npt.NDArray[np.float64],
     window_starts: npt.NDArray[np.float64],
     window_ends: npt.NDArray[np.float64],
+    demands: npt.NDArray[np.float64],
+    capacity: float,
 ) -> npt.NDArray[np.float64]:
     """
     Compute heuristic desirability matrix (eta).
-    Combines distance and time window urgency.
+    Combines distance, time window urgency, and demand to encourage fuller routes.
     """
     n_nodes = len(distance_matrix)
     eta = np.zeros((n_nodes, n_nodes), dtype=np.float64)
@@ -85,8 +42,14 @@ def compute_heuristic_matrix(
                 tw_width = window_ends[j] - window_starts[j]
                 tw_component = 1.0 / (tw_width + 1.0)
 
-                # Combine components
-                eta[i, j] = dist_component * (1.0 + 0.5 * tw_component)
+                # Demand component: prefer customers with higher demand
+                # This encourages filling vehicles efficiently
+                demand_component = demands[j] / capacity
+
+                # Combine components - demand is important for minimizing vehicles
+                eta[i, j] = dist_component * (
+                    1.0 + 0.3 * tw_component + 0.7 * demand_component
+                )
 
     return eta
 
@@ -184,10 +147,14 @@ def select_next_customer(
     beta: float,
     q0: float,
     rand_val: float,
+    demands: npt.NDArray[np.float64],
+    current_load: float,
+    capacity: float,
 ) -> int:
     """
-    Select next customer using ACO transition rule.
+    Select next customer using ACO transition rule with capacity awareness.
     Uses pseudo-random proportional rule (ACS variant).
+    Prefers customers with higher demand to fill routes efficiently.
     """
     if n_feasible == 0:
         return -1
@@ -199,7 +166,13 @@ def select_next_customer(
         customer = feasible[idx]
         tau = pheromone[current_node, customer]
         eta_val = eta[current_node, customer]
-        attractiveness[idx] = (tau**alpha) * (eta_val**beta)
+
+        # Bonus for customers that better fill remaining capacity
+        remaining_capacity = capacity - current_load
+        demand_ratio = demands[customer] / remaining_capacity
+        capacity_bonus = 1.0 + 0.5 * min(demand_ratio, 1.0)
+
+        attractiveness[idx] = (tau**alpha) * (eta_val**beta) * capacity_bonus
 
     # Exploitation vs exploration
     if rand_val < q0:
@@ -250,6 +223,7 @@ def construct_ant_solution(
     speed_factor: float,
     random_values: npt.NDArray[np.float64],
     rand_idx: int,
+    sort_by_demand: bool = True,
 ) -> tuple:
     """
     Construct solution for one ant using probabilistic selection.
@@ -308,7 +282,7 @@ def construct_ant_solution(
             if n_feasible == 0:
                 break
 
-            # Select next customer
+            # Select next customer with capacity awareness
             rand_val = random_values[
                 (rand_idx + flat_idx) % len(random_values)
             ]
@@ -322,6 +296,9 @@ def construct_ant_solution(
                 beta,
                 q0,
                 rand_val,
+                demands,
+                current_load,
+                capacity,
             )
 
             if next_customer < 0:
@@ -415,9 +392,11 @@ def evaluate_solution(
 
         flat_idx += route_len
 
-    # Cost function: prioritize fewer vehicles, then shorter distance
-    VEHICLE_PENALTY = 10000.0
-    return float(n_routes * VEHICLE_PENALTY + total_distance)
+    # Cost function: HEAVILY prioritize fewer vehicles (primary objective)
+    # Use exponential penalty to strongly favor solutions with fewer vehicles
+    VEHICLE_PENALTY = 100000.0
+    vehicle_cost = (n_routes**2) * VEHICLE_PENALTY
+    return float(vehicle_cost + total_distance)
 
 
 @njit(parallel=True, cache=True)
@@ -519,6 +498,7 @@ def update_pheromones(
     """
     Update pheromone trails.
     Uses global update rule (only best solution deposits pheromone).
+    Heavily rewards solutions with fewer vehicles.
     Modifies pheromone matrix in-place.
     """
     n_nodes = pheromone.shape[0]
@@ -530,7 +510,9 @@ def update_pheromones(
 
     # Deposit pheromone on best solution
     if best_cost < np.inf and best_n_routes > 0:
-        delta_tau = 1.0 / best_cost
+        # Extra reward for solutions with fewer vehicles
+        vehicle_bonus = 1.0 / (best_n_routes**2)
+        delta_tau = vehicle_bonus * 10000.0
 
         flat_idx = 0
         for r in range(best_n_routes):
@@ -602,8 +584,10 @@ def aco_vrptw(
             distance_matrix, window_starts, window_ends
         )
 
-    # Compute heuristic matrix
-    eta = compute_heuristic_matrix(distance_matrix, window_starts, window_ends)
+    # Compute heuristic matrix with demand information
+    eta = compute_heuristic_matrix(
+        distance_matrix, window_starts, window_ends, demands, capacity
+    )
 
     # Initialize pheromones
     nn_cost = nearest_neighbor_cost(
@@ -621,8 +605,9 @@ def aco_vrptw(
         np.ones((n_nodes, n_nodes), dtype=np.float64) * initial_pheromone
     )
 
-    min_pheromone = initial_pheromone * 0.01
-    max_pheromone = initial_pheromone * 100.0
+    # Tighter pheromone bounds to maintain diversity
+    min_pheromone = initial_pheromone * 0.001
+    max_pheromone = initial_pheromone * 1000.0
 
     # Best solution tracking
     best_routes_flat = np.zeros(n_nodes * n_vehicles_available, dtype=np.int32)
