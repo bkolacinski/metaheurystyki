@@ -9,8 +9,20 @@ import pandas as pd
 import seaborn as sns
 
 
-def load_tuning_results(csv_path: str) -> pd.DataFrame:
-    df = pd.read_csv(csv_path)
+def load_tuning_results(file_path: str) -> pd.DataFrame:
+    """Load tuning results from CSV or find CSV if JSON is provided."""
+    if file_path.endswith(".json"):
+        # If a best_config JSON file is provided, find the corresponding CSV
+        csv_path = file_path.replace("best_config_", "tuning_results_")
+        csv_path = csv_path.replace(".json", ".csv")
+        if os.path.exists(csv_path):
+            print(f"INFO: Wykryto plik JSON, używam odpowiadającego pliku CSV: {csv_path}")
+            file_path = csv_path
+        else:
+            print(f"ERROR: Podano plik JSON, ale nie znaleziono odpowiadającego pliku CSV: {csv_path}")
+            sys.exit(1)
+    
+    df = pd.read_csv(file_path)
     return df
 
 
@@ -203,7 +215,7 @@ def main():
     )
     parser.add_argument(
         "csv_file",
-        help="Path to CSV file with tuning results",
+        help="Path to CSV file with tuning results (or best_config JSON - will auto-find CSV)",
     )
     parser.add_argument(
         "--output-dir",
@@ -214,7 +226,7 @@ def main():
     args = parser.parse_args()
 
     if not os.path.exists(args.csv_file):
-        print(f"ERROR: CSV file not found: {args.csv_file}")
+        print(f"ERROR: Plik nie istnieje: {args.csv_file}")
         sys.exit(1)
 
     print("=" * 70)

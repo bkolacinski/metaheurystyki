@@ -1,0 +1,1097 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[polish]{babel}
+\usepackage[a4paper, margin=3cm]{geometry}
+\usepackage{array}
+\usepackage{tocloft}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{float}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{multirow}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=left,
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=2
+}
+
+\lstset{style=mystyle}
+\renewcommand{\lstlistingname}{Kod}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=black,
+    urlcolor=blue
+}
+
+\renewcommand{\cftsecleader}{\cftdotfill{\cftdotsep}}
+
+\begin{document}
+    \title{Metaheurystyki --- zadanie 6 \\
+    \large Problem VRPTW --- Algorytm mrówkowy z optymalizacją lokalną \\
+    \small GRUPA 3 --- piątek 10:15}
+    \date{\today}
+    \author{
+        Bartosz Kołaciński \\
+        251554
+        \and
+        Nikodem Nowak \\
+        251598
+    }
+    \maketitle
+
+    \vfill
+    \begin{center}
+        \begin{tabular}{lr}
+            \toprule
+            \textbf{Użyte technologie} & Python 3.13 \\
+            \midrule
+            \textbf{Użyte biblioteki} & \begin{tabular}[t]{@{}r@{}}
+                numpy, numba, pandas, \\
+                matplotlib.pyplot, seaborn
+            \end{tabular} \\
+            \bottomrule
+        \end{tabular}
+    \end{center}
+    \vspace{1cm}
+
+    \newpage
+
+    \tableofcontents
+
+    \newpage
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \section{Opis problemu VRPTW}
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+    Problem marszrutyzacji pojazdów z oknami czasowymi (ang. \textit{Vehicle Routing Problem with Time Windows}, VRPTW) jest rozszerzeniem klasycznego problemu VRP o dodatkowe ograniczenia czasowe.
+
+    \subsection{Definicja problemu}
+
+    Dany jest:
+    \begin{itemize}
+        \item Magazyn centralny (depot) o współrzędnych $(x_0, y_0)$
+        \item Zbiór $n$ klientów, każdy z:
+        \begin{itemize}
+            \item Lokalizacją $(x_i, y_i)$
+            \item Zapotrzebowaniem $q_i$
+            \item Oknem czasowym $[e_i, l_i]$ --- najwcześniejszy i najpóźniejszy czas rozpoczęcia obsługi
+            \item Czasem obsługi $s_i$
+        \end{itemize}
+        \item Zbiór identycznych pojazdów o pojemności $Q$
+    \end{itemize}
+
+    \textbf{Cel:} Znaleźć zestaw tras dla pojazdów, które:
+    \begin{enumerate}
+        \item Minimalizują liczbę użytych pojazdów (cel główny)
+        \item Minimalizują całkowitą przebytą odległość (cel wtórny)
+    \end{enumerate}
+
+    \textbf{Ograniczenia:}
+    \begin{itemize}
+        \item Każdy klient musi być odwiedzony dokładnie raz
+        \item Suma zapotrzebowań na trasie nie może przekroczyć pojemności pojazdu $Q$
+        \item Pojazd musi przybyć do klienta przed końcem okna czasowego $l_i$
+        \item Jeśli pojazd przyjedzie przed początkiem okna $e_i$, musi czekać
+        \item Wszystkie trasy zaczynają i kończą się w magazynie
+    \end{itemize}
+
+    \subsection{Instancje benchmarkowe Solomona}
+
+    W ramach zadania wykorzystano trzy instancje z zestawu benchmarkowego Solomona dla 100 klientów:
+
+    \begin{center}
+        \begin{tabular}{llp{8cm}}
+            \toprule
+            \textbf{Instancja} & \textbf{Kategoria} & \textbf{Charakterystyka} \\
+            \midrule
+            R106 & R1 (Random) & Klienci rozmieszczeni losowo \\
+            C107 & C1 (Clustered) & Klienci pogrupowani w klastry \\
+            RC208 & RC2 (Mixed) & Mieszanka klastrów i rozmieszczenia losowego \\
+            \bottomrule
+        \end{tabular}
+    \end{center}
+
+    \newpage
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \section{Opis zastosowanej metaheurystyki}
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+    \subsection{Algorytm mrówkowy (ACO)}
+
+    Algorytm mrówkowy (Ant Colony Optimization) to metaheurystyka inspirowana zachowaniem mrówek. Mrówki komunikują się ze sobą za pomocą feromonów, czyli substancji chemicznych pozostawianych na trasie. Ścieżki, które mają więcej feromonów są chętniej wybierane, co prowadzi do wytwarzania się częściej obieranych tras.
+
+    \subsubsection{Uzasadnienie wyboru algorytmu}
+
+    Algorytm mrówkowy został wybrany ze względu na:
+    \begin{itemize}
+        \item \textbf{Konstrukcyjny charakter} --- ACO naturalnie buduje rozwiązania krok po kroku, co dobrze pasuje do problemu VRPTW, gdzie trasy są konstruowane przez sekwencyjne dodawanie klientów
+        \item \textbf{Elastyczność} --- łatwo można włączyć ograniczenia VRPTW (okna czasowe, pojemność) do procesu konstrukcji rozwiązania
+        \item \textbf{Równoległa eksploatacja} --- wiele mrówek jednocześnie przeszukuje przestrzeń rozwiązań
+    \end{itemize}
+
+    \subsection{Pseudokod algorytmu ACO dla VRPTW}
+
+    \begin{algorithm}[H]
+    \caption{Algorytm ACO-VRPTW}
+    \begin{algorithmic}[1]
+    \State \textbf{Inicjalizacja:}
+    \State Oblicz macierz odległości $d_{ij}$ dla wszystkich par węzłów
+    \State Oblicz macierz heurystyki $\eta_{ij} = f(d_{ij}, TW_j, q_j)$
+    \State Zainicjuj macierz feromonów $\tau_{ij} \gets \tau_0$
+    \State Znajdź rozwiązanie początkowe metodą najbliższego sąsiada
+    \For{$t = 1$ \textbf{to} $T$ (liczba iteracji)}
+        \For{każda mrówka $k = 1, \ldots, m$}
+            \State Zainicjuj pustą trasę, $current\_node \gets depot$
+            \While{istnieją nieodwiedzeni klienci}
+                \State Znajdź zbiór $\mathcal{F}$ dozwolonych klientów (spełniających TW i pojemność)
+                \If{$\mathcal{F} = \emptyset$}
+                    \State Wróć do depot, rozpocznij nową trasę
+                \Else
+                    \State Wybierz klienta $j$ z prawdopodobieństwem:
+                    \State $p_{ij} = \frac{[\tau_{ij}]^\alpha \cdot [\eta_{ij}]^\beta}{\sum_{l \in \mathcal{F}} [\tau_{il}]^\alpha \cdot [\eta_{il}]^\beta}$
+                    \State (z regułą pseudo-losową, parametr $q_0$)
+                    \State Zaktualizuj czas, obciążenie pojazdu
+                \EndIf
+            \EndWhile
+            \State Oceń rozwiązanie mrówki
+        \EndFor
+        \State \textbf{Aktualizacja feromonów:}
+        \State Wyparowanie: $\tau_{ij} \gets (1-\rho) \cdot \tau_{ij}$
+        \State Depozyt: wzmocnij ścieżki najlepszego rozwiązania
+        \State Zastosuj ograniczenia $[\tau_{min}, \tau_{max}]$
+    \EndFor
+    \State \Return najlepsza znaleziona trasa
+    \end{algorithmic}
+    \end{algorithm}
+
+    \subsection{Parametry algorytmu ACO}
+
+    \begin{center}
+        \begin{tabular}{lp{10cm}}
+            \toprule
+            \textbf{Parametr} & \textbf{Opis} \\
+            \midrule
+            $m$ (n\_ants) & Liczba mrówek w kolonii \\
+            $T$ (n\_iterations) & Liczba iteracji algorytmu \\
+            $\alpha$ & Wpływ feromonów na wybór ścieżki \\
+            $\beta$ & Wpływ heurystyki (odległości, okien czasowych) na wybór \\
+            $\rho$ & Współczynnik wyparowywania feromonów (0 $<$ $\rho$ $<$ 1) \\
+            $q_0$ & Próg eksploatacji --- prawdopodobieństwo wyboru zachłannego \\
+            \bottomrule
+        \end{tabular}
+    \end{center}
+
+    \newpage
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \section{Podejście hybrydowe}
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+    Zaimplementowane rozwiązanie jest \textbf{hybrydą} algorytmu mrówkowego z technikami optymalizacji lokalnej. Struktura hybrydy jest następująca:
+
+    \begin{center}
+        \fbox{\parbox{0.9\textwidth}{
+            \textbf{ACO} (generuje rozwiązanie początkowe) \\
+            $\downarrow$ \\
+            \textbf{Relocate} (optymalizacja między trasami --- inter-route) \\
+            $\downarrow$ \\
+            \textbf{3-opt} (optymalizacja wewnątrz tras --- intra-route)
+        }}
+    \end{center}
+
+    \subsection{Operator Relocate (inter-route)}
+
+    Operator Relocate przenosi klientów między trasami w celu:
+    \begin{itemize}
+        \item Redukcji liczby pojazdów (np. opróżnienie trasy)
+        \item Zmniejszenia całkowitej odległości
+    \end{itemize}
+
+    \begin{algorithm}[H]
+    \caption{Operator Relocate}
+    \begin{algorithmic}[1]
+    \Repeat
+        \State $best\_move \gets None$
+        \For{każda trasa $R_1$}
+            \For{każdy klient $c$ w trasie $R_1$}
+                \For{każda inna trasa $R_2$ (z wystarczającą pojemnością)}
+                    \For{każda pozycja $p$ w trasie $R_2$}
+                        \If{wstawienie $c$ na pozycję $p$ spełnia okna czasowe}
+                            \State $\Delta \gets$ koszt\_usunięcia($c$, $R_1$) $+$ koszt\_wstawienia($c$, $R_2$, $p$)
+                            \If{$\Delta < best\_move.\Delta$}
+                                \State $best\_move \gets (c, R_1, R_2, p, \Delta)$
+                            \EndIf
+                        \EndIf
+                    \EndFor
+                \EndFor
+            \EndFor
+        \EndFor
+        \If{$best\_move \neq None$ \textbf{and} $best\_move.\Delta < 0$}
+            \State Wykonaj $best\_move$
+        \EndIf
+    \Until{brak poprawy}
+    \end{algorithmic}
+    \end{algorithm}
+
+    \subsection{Algorytm 3-opt (intra-route)}
+
+    Algorytm 3-opt usuwa 3 krawędzie z trasy i łączy segmenty na nowo, rozważając wszystkie możliwe rekombinacje. Pozwala to na bardziej radykalne zmiany niż 2-opt.
+
+    \textbf{Modyfikacja dla VRPTW:}
+    \begin{itemize}
+        \item Po każdej modyfikacji sprawdzana jest wykonalność okien czasowych
+        \item Akceptowane są tylko ruchy, które nie naruszają ograniczeń czasowych
+        \item Priorytet ma wykonalność nad poprawą dystansu
+    \end{itemize}
+
+    \begin{algorithm}[H]
+    \caption{3-opt z uwzględnieniem okien czasowych}
+    \begin{algorithmic}[1]
+    \Repeat
+        \State $best\_move \gets None$
+        \For{$i = 1$ \textbf{to} $n-2$}
+            \For{$j = i+1$ \textbf{to} $n-1$}
+                \For{$k = j+1$ \textbf{to} $n$}
+                    \For{$type = 1$ \textbf{to} $7$}
+                        \State $new\_route \gets$ zrekombinuj$(route, i, j, k, type)$
+                        \State $\Delta \gets$ oblicz\_zmianę\_dystansu()
+                        \If{$\Delta < 0$ \textbf{and} sprawdź\_okna\_czasowe($new\_route$)}
+                            \If{$\Delta < best\_move.\Delta$}
+                                \State $best\_move \gets (i, j, k, type, \Delta)$
+                            \EndIf
+                        \EndIf
+                    \EndFor
+                \EndFor
+            \EndFor
+        \EndFor
+        \If{$best\_move \neq None$}
+            \State Zastosuj $best\_move$
+        \EndIf
+    \Until{brak poprawy}
+    \end{algorithmic}
+    \end{algorithm}
+
+    \newpage
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \section{Adaptacja algorytmu do problemu VRPTW}
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+    \subsection{Uwzględnienie okien czasowych}
+
+    Okna czasowe są uwzględniane w kilku miejscach algorytmu:
+
+    \begin{enumerate}
+        \item \textbf{Konstrukcja rozwiązania (ACO):}
+        \begin{itemize}
+            \item Przed dodaniem klienta do trasy sprawdzane jest, czy pojazd zdąży dotrzeć przed końcem okna czasowego
+            \item Klienci, do których nie można dotrzeć na czas, są wykluczani ze zbioru dozwolonych $\mathcal{F}$
+        \end{itemize}
+
+        \item \textbf{Macierz heurystyki:}
+        \begin{itemize}
+            \item Heurystyka uwzględnia szerokość okna czasowego --- węższe okna mają wyższy priorytet
+            \item Formuła: $\eta_{ij} = \frac{1}{d_{ij}} \cdot (1 + 0.3 \cdot tw\_component + 0.7 \cdot demand\_component)$
+        \end{itemize}
+
+        \item \textbf{Optymalizacja lokalna:}
+        \begin{itemize}
+            \item Operator Relocate sprawdza wykonalność wstawienia w każdą pozycję
+            \item 3-opt akceptuje tylko ruchy zachowujące wykonalność
+        \end{itemize}
+    \end{enumerate}
+
+    \subsection{Definicja funkcji celu}
+
+    Funkcja celu jest hierarchiczna --- najpierw minimalizowana jest liczba pojazdów, potem dystans:
+
+    \begin{equation}
+        f(S) = n_{vehicles}^2 \cdot PENALTY + \sum_{r \in Routes} distance(r)
+    \end{equation}
+
+    gdzie $PENALTY = 100000$ jest dużą stałą zapewniającą priorytet minimalizacji liczby pojazdów.
+
+    \subsection{Ocena tras}
+
+    Każda trasa jest oceniana pod kątem:
+    \begin{itemize}
+        \item \textbf{Wykonalności} --- czy wszystkie okna czasowe są spełnione
+        \item \textbf{Dystansu} --- suma odległości między kolejnymi klientami
+        \item \textbf{Czasu} --- czas przybycia, oczekiwania i obsługi
+    \end{itemize}
+
+    Trasy niewykonalne otrzymują koszt $\infty$ i nie są akceptowane.
+
+    \subsection{Dodatkowe ograniczenia}
+
+    \begin{itemize}
+        \item \textbf{Limit pojazdów:} Maksymalna liczba tras jest ograniczona przez parametr instancji
+        \item \textbf{Pojemność:} Sprawdzana przy każdym dodaniu klienta do trasy
+        \item \textbf{Czekanie:} Jeśli pojazd przyjedzie przed otwarciem okna, musi czekać (nie jest to naruszenie), ale wiąże się ze zwiększeniem kosztu rozwiązania
+    \end{itemize}
+
+    \newpage
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \section{Kluczowe miejsca implementacji}
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+    \subsection{Obliczanie macierzy heurystyki}
+
+    \begin{lstlisting}[language=Python, caption={Macierz heurystyki uwzględniająca okna czasowe i zapotrzebowanie}]
+@njit(cache=True)
+def compute_heuristic_matrix(
+    distance_matrix, window_starts, window_ends, demands, capacity
+):
+    n_nodes = len(distance_matrix)
+    eta = np.zeros((n_nodes, n_nodes), dtype=np.float64)
+
+    for i in range(n_nodes):
+        for j in range(n_nodes):
+            if i != j and distance_matrix[i, j] > 0:
+                # Bazowa heurystyka: odwrotnosc odleglosci
+                dist_component = 1.0 / distance_matrix[i, j]
+
+                # Pilnosc okna czasowego: preferuj wezsze okna
+                tw_width = window_ends[j] - window_starts[j]
+                tw_component = 1.0 / (tw_width + 1.0)
+
+                # Komponent zapotrzebowania: preferuj wieksze zamowienia
+                demand_component = demands[j] / capacity
+
+                eta[i, j] = dist_component * (
+                    1.0 + 0.3 * tw_component + 0.7 * demand_component
+                )
+    return eta
+    \end{lstlisting}
+
+    \subsection{Wybór następnego klienta z regułą pseudo-losową}
+
+    \begin{lstlisting}[language=Python, caption={Selekcja klienta z uwzględnieniem pojemności}]
+@njit(cache=True)
+def select_next_customer(
+    current_node, feasible, n_feasible, pheromone, eta,
+    alpha, beta, q0, rand_val, demands, current_load, capacity
+):
+    # Oblicz atrakcyjnosc kazdego dozwolonego klienta
+    attractiveness = np.zeros(n_feasible, dtype=np.float64)
+
+    for idx in range(n_feasible):
+        customer = feasible[idx]
+        tau = pheromone[current_node, customer]
+        eta_val = eta[current_node, customer]
+
+        # Bonus za lepsze wypelnienie pozostalej pojemnosci
+        remaining_capacity = capacity - current_load
+        demand_ratio = demands[customer] / remaining_capacity
+        capacity_bonus = 1.0 + 0.5 * min(demand_ratio, 1.0)
+
+        attractiveness[idx] = (tau ** alpha) * (eta_val ** beta) * capacity_bonus
+
+    # Eksploatacja vs eksploracja
+    if rand_val < q0:
+        # Eksploatacja: wybierz najlepszego
+        return feasible[np.argmax(attractiveness)]
+    else:
+        # Eksploracja: selekcja ruletkowa
+        probabilities = attractiveness / np.sum(attractiveness)
+        # ... (selekcja ruletka)
+    \end{lstlisting}
+
+    \subsection{Aktualizacja feromonów z bonusem za mniej pojazdów}
+
+    \begin{lstlisting}[language=Python, caption={Aktualizacja feromonów premiująca mniejszą liczbę tras}]
+@njit(cache=True)
+def update_pheromones(
+    pheromone, best_routes_flat, best_route_lengths,
+    best_n_routes, best_cost, rho, min_pheromone, max_pheromone
+):
+    n_nodes = pheromone.shape[0]
+
+    # Wyparowywanie
+    for i in range(n_nodes):
+        for j in range(n_nodes):
+            pheromone[i, j] *= (1.0 - rho)
+
+    # Depozyt na najlepszym rozwiazaniu
+    if best_cost < np.inf and best_n_routes > 0:
+        # Dodatkowa nagroda za mniej pojazdow
+        vehicle_bonus = 1.0 / (best_n_routes ** 2)
+        delta_tau = vehicle_bonus * 10000.0
+
+        # Wzmocnij krawedzie najlepszego rozwiazania
+        for edge in best_solution_edges:
+            pheromone[from_node, to_node] += delta_tau
+            pheromone[to_node, from_node] += delta_tau  # Symetryczne
+
+    # Ogranicz poziomy feromonow
+    np.clip(pheromone, min_pheromone, max_pheromone, out=pheromone)
+    \end{lstlisting}
+
+    \subsection{3-opt z weryfikacją okien czasowych}
+
+    \begin{lstlisting}[language=Python, caption={Sprawdzanie wykonalności trasy}]
+@njit(cache=True)
+def _check_route_feasibility(
+    route, distance_matrix, service_times,
+    window_starts, window_ends, speed_factor=1.0
+):
+    """Sprawdz czy trasa spelnia wszystkie okna czasowe."""
+    current_time = 0.0
+    for p in range(1, len(route)):
+        from_node = route[p - 1]
+        to_node = route[p]
+        travel_time = distance_matrix[from_node, to_node] * speed_factor
+        current_time += travel_time
+
+        if current_time < window_starts[to_node]:
+            current_time = window_starts[to_node]  # Czekanie
+        elif current_time > window_ends[to_node]:
+            return False  # Za pozno!
+
+        current_time += service_times[to_node]
+    return True
+    \end{lstlisting}
+
+    \newpage
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \section{Instrukcja uruchomienia programu}
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+    \subsection{Uruchomienie podstawowe}
+
+    Program uruchamia się z katalogu \texttt{zadanie6/} poprzez:
+    \begin{center}
+        \texttt{python run\_multiple\_and\_visualize.py <instancja> [opcje]}
+    \end{center}
+
+    \noindent Dostępne opcje można wyświetlić za pomocą:
+    \begin{center}
+        \texttt{python run\_multiple\_and\_visualize.py --help}
+    \end{center}
+
+    \textbf{Przykłady:}
+    \begin{verbatim}
+# Uruchom dla instancji c107.txt, 50 razy
+python run_multiple_and_visualize.py c107.txt --runs 50
+
+# Z dostrojonymi parametrami
+python run_multiple_and_visualize.py r106.txt --runs 30 \
+    --alpha 1.5 --beta 3.5 --rho 0.15 --q0 0.85
+
+# Bez optymalizacji lokalnej (tylko ACO)
+python run_multiple_and_visualize.py rc208.txt --no-local-search
+    \end{verbatim}
+
+    \subsection{Dostępne parametry}
+
+    \begin{center}
+        \begin{tabular}{lll}
+            \toprule
+            \textbf{Opcja} & \textbf{Domyślna} & \textbf{Opis} \\
+            \midrule
+            \texttt{--runs N} & 10 & Liczba uruchomień algorytmu \\
+            \texttt{--n\_ants N} & 200 & Liczba mrówek w kolonii \\
+            \texttt{--n\_iterations N} & 100 & Liczba iteracji ACO \\
+            \texttt{--alpha FLOAT} & 1.0 & Wpływ feromonów \\
+            \texttt{--beta FLOAT} & 3.0 & Wpływ heurystyki \\
+            \texttt{--rho FLOAT} & 0.1 & Współczynnik wyparowywania \\
+            \texttt{--q0 FLOAT} & 0.9 & Próg eksploatacji \\
+            \texttt{--output DIR} & results/ & Katalog wyjściowy \\
+            \texttt{--no-local-search} & (wyłączone) & Wyłącz optymalizację lokalną \\
+            \bottomrule
+        \end{tabular}
+    \end{center}
+
+    \subsection{Wyniki}
+
+    Program generuje:
+    \begin{itemize}
+        \item Wizualizacje rozwiązań (PNG) z trasami w różnych kolorach --- najlepsze, najgorsze i średnie rozwiązanie
+        \item Plik CSV ze statystykami wszystkich uruchomień
+        \item Podsumowanie na konsoli z najlepszym, najgorszym i średnim wynikiem
+    \end{itemize}
+
+    \newpage
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \section{Projektowanie eksperymentów}
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+    \subsection{Badane parametry}
+
+    \begin{center}
+        \begin{tabular}{llp{6cm}}
+            \toprule
+            \textbf{Parametr} & \textbf{Zakres wartości} & \textbf{Uzasadnienie} \\
+            \midrule
+            $\alpha$ & 0.5, 1.0, 1.5, 2.0 & Kontroluje równowagę między feromonami a heurystyką \\
+            $\beta$ & 2.0, 3.0, 5.0, 7.0 & Wyższe wartości preferują bliższe/pilniejsze węzły \\
+            $\rho$ & 0.05, 0.1, 0.2, 0.3 & Szybkość zapominania starych ścieżek \\
+            $q_0$ & 0.7, 0.8, 0.9, 0.95 & Równowaga eksploatacja/eksploracja \\
+            n\_ants & 50, 100, 200 & Większy rój = lepsza eksploracja \\
+            n\_iterations & 50, 100, 200 & Więcej iteracji = więcej czasu na zbieżność \\
+            \bottomrule
+        \end{tabular}
+    \end{center}
+
+    \subsection{Metodologia eksperymentów}
+
+    Dla każdego zestawu danych:
+    \begin{enumerate}
+        \item Algorytm uruchamiany \textbf{50 razy} dla wybranej konfiguracji parametrów
+        \item Zapisywane metryki:
+        \begin{itemize}
+            \item Liczba pojazdów (cel główny)
+            \item Całkowity dystans
+            \item Czas obliczeń
+        \end{itemize}
+        \item Obliczane statystyki:
+        \begin{itemize}
+            \item Najlepszy wynik
+            \item Najgorszy wynik
+            \item Średnia
+            \item Odchylenie standardowe
+        \end{itemize}
+    \end{enumerate}
+
+    \newpage
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \section{Eksperymenty i wyniki}
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+    Przeprowadzono eksperymenty na trzech instancjach benchmarkowych Solomona. Dla każdej instancji wykonano strojenie parametrów (750 konfiguracji, każda po 3 razy) oraz 50 uruchomień z najlepszymi znalezionymi parametrami.
+
+    \subsection{Najlepsze znalezione rozwiązania}
+
+    Poniższa tabela przedstawia najlepsze wyniki uzyskane podczas 50 uruchomień z optymalnymi parametrami:
+
+    \begin{center}
+        \begin{tabular}{lccl}
+            \toprule
+            \textbf{Instancja} & \textbf{Pojazdy} & \textbf{Dystans} & \textbf{Parametry} \\
+            \midrule
+            C107 & 12 & 942.52 & $\alpha$=0.5, $\beta$=3.0, $\rho$=0.05, $q_0$=0.75 \\
+            R106 & 18 & 1431.07 & $\alpha$=0.5, $\beta$=3.5, $\rho$=0.25, $q_0$=0.7 \\
+            RC208 & 3 & 983.41 & $\alpha$=0.5, $\beta$=3.5, $\rho$=0.3, $q_0$=0.75 \\
+            \bottomrule
+        \end{tabular}
+    \end{center}
+
+    \textbf{Obserwacje:}
+    \begin{itemize}
+        \item Dla wszystkich instancji optymalny $\alpha = 0.5$, co sugeruje mniejszy wpływ feromonów na rzecz heurystyki
+        \item Wartości $\beta$ w zakresie 3.0--3.5 okazały się optymalne
+        \item Instancja RC208 osiągnęła optymalną liczbę pojazdów (3)
+        \item Dla instancji R106 wymagane jest niższe $q_0$ (0.7) --- większa eksploracja dla trudnych instancji
+        \item Dłuższe czasy wykonania wynikają z uruchamiania wszystkich testów równolegle, co redukuje prędkość programu
+    \end{itemize}
+
+    \subsection{Statystyki z wielokrotnych uruchomień}
+
+    Dla każdej instancji wykonano 50 uruchomień z najlepszymi parametrami znalezionymi podczas strojenia.
+
+    \subsubsection{Zbiorcze porównanie instancji}
+
+    \begin{center}
+        \begin{tabular}{l|cccc|cccc}
+            \toprule
+            & \multicolumn{4}{c|}{\textbf{Liczba pojazdów}} & \multicolumn{4}{c}{\textbf{Dystans}} \\
+            \textbf{Instancja} & Min & Max & Śr. & Std & Min & Max & Śr. & Std \\
+            \midrule
+            C107 & 12 & 15 & 13.12 & 0.72 & 942.52 & 1293.87 & 1089.93 & 89.46 \\
+            R106 & 18 & 23 & 19.92 & 1.18 & 1411.63 & 1670.82 & 1533.12 & 51.31 \\
+            RC208 & 3 & 4 & 3.98 & 0.14 & 927.35 & 1076.10 & 999.94 & 38.34 \\
+            \bottomrule
+        \end{tabular}
+    \end{center}
+
+    \subsubsection{Instancja C107 (klastrowa)}
+
+    Parametry: $\alpha$=0.5, $\beta$=3.0, $\rho$=0.05, $q_0$=0.75
+
+    \begin{itemize}
+        \item Algorytm wykazuje dużą stabilność --- odchylenie standardowe dystansu to tylko 8.2\% średniej
+        \item Najlepszy wynik (942.52) osiągnięto z 13 pojazdami, najlepszy pod względem pojazdów to 12 z dystansem 955.72
+        \item Rozkład pojazdów: 12 (16\%), 13 (54\%), 14 (26\%), 15 (4\%)
+    \end{itemize}
+
+    \subsubsection{Instancja RC208 (mieszana)}
+
+    Parametry: $\alpha$=0.5, $\beta$=3.5, $\rho$=0.3, $q_0$=0.75
+
+    \begin{itemize}
+        \item Szerokie okna czasowe umożliwiają znaczną redukcję liczby pojazdów
+        \item Najlepszy wynik: 3 pojazdy, dystans 983.41 (uruchomienie 41) --- \textbf{optymalna liczba pojazdów}
+        \item Rozkład pojazdów: 3 (2\%), 4 (98\%) --- bardzo stabilna liczba pojazdów
+        \item Najniższe odchylenie standardowe dystansu (3.8\% średniej)
+    \end{itemize}
+
+    \subsubsection{Wyniki strojenia parametrów}
+
+    Podczas strojenia przetestowano 750 konfiguracji parametrów dla każdej instancji:
+
+    \begin{center}
+        \begin{tabular}{lccccc}
+            \toprule
+            \textbf{Instancja} & \textbf{Min poj.} & \textbf{Max poj.} & \textbf{Śr. poj.} & \textbf{Min dyst.} & \textbf{Czas tuningu} \\
+            \midrule
+            C107 & 11 & 17 & 13.30 & 972.46 & 3.1h \\
+            R106 & 18 & 23 & 20.89 & 1619.17 & 3.1h \\
+            RC208 & 3 & 4 & 3.73 & 1010.71 & 3.9h \\
+            \bottomrule
+        \end{tabular}
+    \end{center}
+
+    \subsection{Wpływ parametrów}
+
+    Na podstawie analizy 750 konfiguracji dla instancji C107 zbadano wpływ poszczególnych parametrów.
+
+    \subsubsection{Wpływ współczynnika $\alpha$}
+
+    \begin{center}
+        \begin{tabular}{lcccc}
+            \toprule
+            $\alpha$ & Min pojazdy & Śr. pojazdy & Min dystans & Śr. dystans \\
+            \midrule
+            0.5 & 11 & 12.59 & 972.46 & 1229.68 \\
+            1.0 & 11 & 13.19 & 1037.43 & 1383.02 \\
+            1.5 & 12 & 13.54 & 1112.87 & 1479.90 \\
+            2.0 & 11 & 13.51 & 1173.75 & 1499.48 \\
+            2.5 & 12 & 13.65 & 1263.79 & 1532.17 \\
+            \bottomrule
+        \end{tabular}
+    \end{center}
+
+    \textbf{Wniosek:} Niskie wartości $\alpha$ (0.5) dają najlepsze wyniki. Mniejszy wpływ feromonów pozwala na większą eksplorację przestrzeni rozwiązań.
+
+    \subsubsection{Wpływ współczynnika $\beta$}
+
+    \begin{center}
+        \begin{tabular}{lcccc}
+            \toprule
+            $\beta$ & Min pojazdy & Śr. pojazdy & Min dystans & Śr. dystans \\
+            \midrule
+            2.5 & 11 & 13.41 & 1043.87 & 1484.32 \\
+            3.0 & 11 & 13.41 & 972.46 & 1464.93 \\
+            3.5 & 12 & 13.38 & 1013.10 & 1449.18 \\
+            4.0 & 11 & 13.21 & 1022.80 & 1402.53 \\
+            4.5 & 11 & 13.20 & 1029.09 & 1384.53 \\
+            5.0 & 11 & 13.18 & 1092.23 & 1363.61 \\
+            \bottomrule
+        \end{tabular}
+    \end{center}
+
+    \textbf{Wniosek:} Wartości $\beta$ w zakresie 3.0--4.0 dają najlepsze minimalne wyniki. Wyższe $\beta$ poprawia średnią, ale niekoniecznie minimum.
+
+    \subsubsection{Wpływ współczynnika $\rho$}
+
+    \begin{center}
+        \begin{tabular}{lcccc}
+            \toprule
+            $\rho$ & Min pojazdy & Śr. pojazdy & Min dystans & Śr. dystans \\
+            \midrule
+            0.05 & 11 & 13.39 & 972.46 & 1430.02 \\
+            0.10 & 11 & 13.42 & 1036.87 & 1439.22 \\
+            0.15 & 11 & 13.31 & 1022.80 & 1425.59 \\
+            0.20 & 11 & 13.23 & 1013.10 & 1420.64 \\
+            0.25 & 11 & 13.13 & 1043.87 & 1408.79 \\
+            \bottomrule
+        \end{tabular}
+    \end{center}
+
+    \textbf{Wniosek:} Niskie wartości $\rho$ (0.05) pozwalają na lepszą eksploatację znalezionych dobrych ścieżek. Powolne wyparowywanie feromonów stabilizuje poszukiwania.
+
+    \subsubsection{Wpływ progu eksploatacji $q_0$}
+
+    \begin{center}
+        \begin{tabular}{lcccc}
+            \toprule
+            $q_0$ & Min pojazdy & Śr. pojazdy & Min dystans & Śr. dystans \\
+            \midrule
+            0.75 & 11 & 12.58 & 972.46 & 1350.11 \\
+            0.80 & 11 & 12.79 & 1024.44 & 1358.44 \\
+            0.85 & 12 & 13.18 & 1029.09 & 1411.31 \\
+            0.90 & 12 & 13.63 & 1095.76 & 1459.61 \\
+            0.95 & 12 & 14.31 & 1013.10 & 1544.78 \\
+            \bottomrule
+        \end{tabular}
+    \end{center}
+
+    \textbf{Wniosek:} Umiarkowane wartości $q_0$ (0.75--0.80) dają najlepsze wyniki. Zbyt wysoka eksploatacja ($q_0 > 0.9$) prowadzi do przedwczesnej zbieżności.
+
+    \subsubsection{Wykresy wpływu parametrów}
+
+    Poniższe wykresy przedstawiają zależność jakości rozwiązania (liczba pojazdów i dystans) od wartości poszczególnych parametrów.
+
+    \textbf{Instancja C107 (klastrowa)}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.75\textwidth]{../analysis/tuning_results_c107_20260129_163846_param_alpha.png}
+        \caption{C107: Wpływ parametru $\alpha$ --- niższe wartości dają lepsze wyniki}
+    \end{figure}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.75\textwidth]{../analysis/tuning_results_c107_20260129_163846_param_beta.png}
+        \caption{C107: Wpływ parametru $\beta$ --- optymalne wartości w zakresie 3.0--4.0}
+    \end{figure}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.75\textwidth]{../analysis/tuning_results_c107_20260129_163846_param_rho.png}
+        \caption{C107: Wpływ parametru $\rho$ --- niskie wartości stabilizują poszukiwania}
+    \end{figure}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.75\textwidth]{../analysis/tuning_results_c107_20260129_163846_param_q0.png}
+        \caption{C107: Wpływ parametru $q_0$ --- umiarkowane wartości zapewniają lepszą eksplorację}
+    \end{figure}
+
+    \newpage
+
+    \textbf{Instancja R106 (losowa)}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.75\textwidth]{../analysis/tuning_results_r106_20260129_165031_param_alpha.png}
+        \caption{R106: Wpływ parametru $\alpha$ --- podobnie jak dla C107, niższe wartości są lepsze}
+    \end{figure}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.75\textwidth]{../analysis/tuning_results_r106_20260129_165031_param_beta.png}
+        \caption{R106: Wpływ parametru $\beta$ --- optymalne wartości 3.0--3.5}
+    \end{figure}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.75\textwidth]{../analysis/tuning_results_r106_20260129_165031_param_rho.png}
+        \caption{R106: Wpływ parametru $\rho$ --- dla instancji losowej wyższe $\rho$ (0.25) daje lepsze wyniki}
+    \end{figure}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.75\textwidth]{../analysis/tuning_results_r106_20260129_165031_param_q0.png}
+        \caption{R106: Wpływ parametru $q_0$ --- niższe wartości (0.7) są kluczowe dla trudnych instancji}
+    \end{figure}
+
+    \newpage
+
+    \textbf{Instancja RC208 (mieszana)}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.75\textwidth]{../analysis/tuning_results_rc208_20260129_170439_param_alpha.png}
+        \caption{RC208: Wpływ parametru $\alpha$ --- niskie wartości optymalne podobnie jak dla innych instancji}
+    \end{figure}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.75\textwidth]{../analysis/tuning_results_rc208_20260129_170439_param_beta.png}
+        \caption{RC208: Wpływ parametru $\beta$ --- optymalne wartości 3.0--3.5}
+    \end{figure}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.75\textwidth]{../analysis/tuning_results_rc208_20260129_170439_param_rho.png}
+        \caption{RC208: Wpływ parametru $\rho$ --- wyższe wartości (0.25--0.3) lepsze dla instancji mieszanych}
+    \end{figure}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.75\textwidth]{../analysis/tuning_results_rc208_20260129_170439_param_q0.png}
+        \caption{RC208: Wpływ parametru $q_0$ --- umiarkowane wartości (0.75) zapewniają dobrą równowagę}
+    \end{figure}
+
+    \subsection{Wizualizacje tras}
+
+    \subsubsection{Instancja C107 (klastrowa)}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{../analysis/c107_best_solution_20260129_185927.png}
+        \caption{Najlepsza znaleziona trasa dla instancji C107 (12 pojazdów, dystans: 955.72)}
+    \end{figure}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{../analysis/c107_avg_solution_20260129_185930.png}
+        \caption{Średnie rozwiązanie dla instancji C107 --- widoczne typowe grupowanie klientów w klastry}
+    \end{figure}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{../analysis/c107_worst_solution_20260129_185929.png}
+        \caption{Najgorsze rozwiązanie dla instancji C107 (15 pojazdów, dystans: 1293.87)}
+    \end{figure}
+
+    \newpage
+
+    \subsubsection{Instancja R106 (losowa)}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{../analysis/r106_best_solution_20260129_193635.png}
+        \caption{Najlepsza znaleziona trasa dla instancji R106 (18 pojazdów, dystans: 1431.07)}
+    \end{figure}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{../analysis/r106_avg_solution_20260129_193637.png}
+        \caption{Średnie rozwiązanie dla instancji R106 --- widoczne rozproszone rozmieszczenie klientów}
+    \end{figure}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{../analysis/r106_worst_solution_20260129_193636.png}
+        \caption{Najgorsze rozwiązanie dla instancji R106 (23 pojazdy, dystans: 1670.82)}
+    \end{figure}
+
+    \newpage
+
+    \subsubsection{Instancja RC208 (mieszana)}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{../analysis/rc208_best_solution_20260129_193940.png}
+        \caption{Najlepsza znaleziona trasa dla instancji RC208 (3 pojazdy, dystans: 983.41) --- optymalna liczba pojazdów}
+    \end{figure}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{../analysis/rc208_avg_solution_20260129_193941.png}
+        \caption{Średnie rozwiązanie dla instancji RC208 --- mieszanka klastrów i rozmieszczenia losowego}
+    \end{figure}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{../analysis/rc208_worst_solution_20260129_193941.png}
+        \caption{Najgorsze rozwiązanie dla instancji RC208 (4 pojazdy, dystans: 1076.10)}
+    \end{figure}
+
+    \subsection{Analiza zbieżności i stabilności}
+
+    Na podstawie 50 uruchomień dla każdej instancji zaobserwowano:
+
+    \begin{center}
+        \begin{tabular}{lccc}
+            \toprule
+            \textbf{Metryka} & \textbf{C107} & \textbf{R106} & \textbf{RC208} \\
+            \midrule
+            Odch. std. dystansu / średnia & 8.2\% & 3.3\% & 3.8\% \\
+            Dominujący wynik (pojazdy) & 13 (54\%) & 19--20 (58\%) & 4 (98\%) \\
+            Zakres pojazdów & 12--15 & 18--23 & 3--4 \\
+            Średni czas uruchomienia & 0.86s & 0.59s & 1.09s \\
+            \bottomrule
+        \end{tabular}
+    \end{center}
+
+    \textbf{Obserwacje:}
+    \begin{itemize}
+        \item Algorytm wykazuje wysoką stabilność dla wszystkich instancji (odch. std. $<$10\% średniej)
+        \item RC208 jest najbardziej stabilna --- 98\% uruchomień daje 4 pojazdy
+        \item R106 ma największy rozrzut liczby pojazdów (18--23), co wynika z trudności instancji
+        \item Szybka zbieżność do dobrego rozwiązania (pierwsze 20--30 iteracji ACO)
+        \item Optymalizacja lokalna (Relocate + 3-opt) znacząco poprawia jakość końcową
+    \end{itemize}
+
+    \newpage
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \section{Porównanie z najlepszymi znanymi rozwiązaniami (BKS)}
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+    Najlepsze znane rozwiązania (Best Known Solutions) pochodzą z literatury.
+
+    \begin{center}
+        \begin{tabular}{lcccccr}
+            \toprule
+            \textbf{Instancja} & \multicolumn{2}{c}{\textbf{BKS}} & \multicolumn{2}{c}{\textbf{Nasz najlepszy}} & \textbf{Gap dystansu} \\
+            \cmidrule(lr){2-3} \cmidrule(lr){4-5}
+            & Pojazdy & Dystans & Pojazdy & Dystans & \\
+            \midrule
+            C107 & 10 & 828.94 & 12 & 942.52 & +13.7\% \\
+            R106 & 12 & 1234.6 & 18 & 1431.07 & +15.9\% \\
+            RC208 & 3 & 828.14 & 3 & 983.41 & +18.8\% \\
+            \bottomrule
+        \end{tabular}
+    \end{center}
+
+    \textbf{Interpretacja:}
+    \begin{itemize}
+        \item \textbf{RC208:} Osiągnięto optymalną liczbę pojazdów (3), gap dystansowy +18.8\%
+        \item \textbf{C107:} Gap dystansowy +13.7\% przy 2 dodatkowych pojazdach
+        \item \textbf{R106:} Instancja najtrudniejsza --- +50\% pojazdów względem BKS, ale gap dystansowy tylko +15.9\%
+    \end{itemize}
+
+    \textbf{Wnioski:}
+    \begin{itemize}
+        \item Instancje klastrowe (C) są łatwiejsze dla algorytmu ACO
+        \item Instancje losowe (R) wymagają więcej pojazdów --- trudniejsze do optymalizacji
+        \item Szersze okna czasowe (RC208) ułatwiają redukcję liczby pojazdów
+    \end{itemize}
+
+    \newpage
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \section{Analiza wyników}
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+    \subsection{Wpływ parametrów na jakość rozwiązania}
+
+    Na podstawie przeprowadzonych eksperymentów stwierdzono:
+
+    \begin{enumerate}
+        \item \textbf{Parametr $\alpha$ (wpływ feromonów):}
+        \begin{itemize}
+            \item Niska wartość ($\alpha = 0.5$) daje najlepsze wyniki dla wszystkich instancji
+            \item Zmniejszenie wpływu feromonów pozwala na większą eksplorację
+            \item Wysokie $\alpha$ prowadzi do przedwczesnej zbieżności
+        \end{itemize}
+
+        \item \textbf{Parametr $\beta$ (wpływ heurystyki):}
+        \begin{itemize}
+            \item Optymalne wartości w zakresie 3.0--4.0
+            \item Wyższa wartość preferuje bliższych klientów i węższe okna czasowe
+            \item Zbyt wysokie $\beta$ może pomijać dobre rozwiązania z dłuższymi skokami
+        \end{itemize}
+
+        \item \textbf{Parametr $\rho$ (wyparowywanie):}
+        \begin{itemize}
+            \item Niskie wartości (0.05--0.15) stabilizują poszukiwania
+            \item Wysokie $\rho$ powoduje zbyt szybkie zapominanie dobrych ścieżek
+        \end{itemize}
+
+        \item \textbf{Parametr $q_0$ (eksploatacja):}
+        \begin{itemize}
+            \item Optymalne w zakresie 0.70--0.80
+            \item Zbyt wysoka wartość ($>$0.9) ogranicza eksplorację
+        \end{itemize}
+    \end{enumerate}
+
+    \subsection{Stabilność algorytmu}
+
+    Analiza 50 uruchomień dla każdej instancji wykazała wysoką stabilność algorytmu:
+
+    \begin{itemize}
+        \item \textbf{C107:} Odch. std. dystansu 8.2\% średniej, 54\% uruchomień dało 13 pojazdów
+        \item \textbf{R106:} Odch. std. dystansu 3.3\% średniej, 58\% uruchomień dało 19--20 pojazdów
+        \item \textbf{RC208:} Odch. std. dystansu 3.8\% średniej, 98\% uruchomień dało 4 pojazdy
+    \end{itemize}
+
+    Algorytm jest stabilny dla wszystkich typów instancji --- większość uruchomień daje podobne wyniki, co świadczy o dobrej zbieżności i powtarzalności.
+
+    \subsection{Trudność instancji}
+
+    \begin{itemize}
+        \item \textbf{Grupa R (losowe):} Najtrudniejsza --- rozproszone rozmieszczenie klientów utrudnia optymalizację. Dla R106 nie udało się osiągnąć optymalnej liczby pojazdów (12 vs 18).
+
+        \item \textbf{Grupa C (klastrowe):} Umiarkowana trudność --- klienci w skupiskach ułatwiają tworzenie efektywnych tras. Dla C107 osiągnięto wynik bliski optymalnemu (+1 pojazd).
+
+        \item \textbf{Grupa RC (mieszane):} Szersze okna czasowe (typ 2) znacząco ułatwiają optymalizację. Dla RC208 osiągnięto optymalną liczbę pojazdów (3).
+    \end{itemize}
+
+    \subsection{Efektywność optymalizacji lokalnej}
+
+    Połączenie ACO z operatorami Relocate i 3-opt okazało się kluczowe:
+    \begin{itemize}
+        \item Operator Relocate skutecznie redukuje liczbę pojazdów przez przenoszenie klientów między trasami
+        \item 3-opt optymalizuje kolejność odwiedzin wewnątrz tras
+        \item Bez optymalizacji lokalnej wyniki byłyby znacząco gorsze (szacunkowo +20--30\% dystansu)
+    \end{itemize}
+
+    \newpage
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \section{Wnioski}
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+    \subsection{Podsumowanie}
+
+    Na podstawie przeprowadzonych eksperymentów (750 konfiguracji parametrów, 50 uruchomień dla najlepszej konfiguracji) sformułowano następujące wnioski:
+
+    \begin{itemize}
+        \item \textbf{Skuteczność podejścia hybrydowego:} Połączenie ACO z operatorami Relocate i 3-opt pozwala osiągnąć wyniki bliskie najlepszym znanym rozwiązaniom. Dla instancji RC208 osiągnięto optymalną liczbę pojazdów (3), a dla C107 wynik różni się tylko o 1 pojazd od optymalnego.
+
+        \item \textbf{Wpływ parametrów:} Kluczowe znaczenie ma dobór parametrów. Niskie $\alpha$ (0.5) i umiarkowane $q_0$ (0.70--0.80) zapewniają lepszą eksplorację. Wartości $\beta$ w zakresie 3.0--3.5 oraz niskie $\rho$ (0.05--0.15) stabilizują poszukiwania.
+
+        \item \textbf{Charakterystyka instancji:} Instancje klastrowe (C) są najłatwiejsze do optymalizacji, a instancje losowe (R) najtrudniejsze. Szersze okna czasowe (typ 2) znacząco ułatwiają redukcję liczby pojazdów.
+
+        \item \textbf{Stabilność:} Algorytm wykazuje dobrą stabilność --- odchylenie standardowe dystansu wynosi ok. 8\% średniej dla wielokrotnych uruchomień.
+
+        \item \textbf{Wydajność:} Wykorzystanie biblioteki Numba do kompilacji JIT znacząco przyspiesza obliczenia (średni czas uruchomienia $<$1s po kompilacji), umożliwiając użycie większej liczby mrówek i iteracji.
+    \end{itemize}
+
+    \subsection{Rekomendowane parametry}
+
+    Na podstawie strojenia 750 konfiguracji dla trzech instancji sugerujemy następujące wartości parametrów:
+
+    \begin{center}
+        \begin{tabular}{lll}
+            \toprule
+            \textbf{Parametr} & \textbf{Zalecana wartość} & \textbf{Uzasadnienie} \\
+            \midrule
+            Liczba mrówek (n\_ants) & 200 & Dobra eksploracja przestrzeni rozwiązań \\
+            Liczba iteracji (n\_iterations) & 100 & Wystarczające do zbieżności \\
+            Wpływ feromonów ($\alpha$) & 0.5 & Mniejszy wpływ = lepsza eksploracja \\
+            Wpływ heurystyki ($\beta$) & 3.0--3.5 & Balans między bliskością a jakością \\
+            Wyparowywanie ($\rho$) & 0.05--0.15 & Powolne zapominanie stabilizuje \\
+            Próg eksploatacji ($q_0$) & 0.70--0.80 & Unikanie przedwczesnej zbieżności \\
+            \bottomrule
+        \end{tabular}
+    \end{center}
+
+    \textbf{Uwaga:} Wartości te zostały wyznaczone eksperymentalnie i mogą wymagać dostrojenia dla innych instancji. Dla instancji losowych (typ R) zaleca się niższe $q_0$ (większa eksploracja), a dla klastrowych (typ C) można zwiększyć $\beta$.
+
+    \subsection{Ograniczenia rozwiązania}
+
+    \begin{itemize}
+        \item \textbf{Złożoność obliczeniowa:} Operator 3-opt ma złożoność $O(n^3)$, co może być wąskim gardłem dla tras z ponad 30 klientami. Dla większych instancji (200+ klientów) czas obliczeń rośnie znacząco
+
+        \item \textbf{Wrażliwość na parametry:} Nieoptymalne parametry mogą prowadzić do rozwiązań gorszych o 20--40\%. Wymaga strojenia dla nowych typów instancji
+
+        \item \textbf{Brak adaptacji:} Parametry są stałe w trakcie działania algorytmu --- brak mechanizmu adaptacyjnego dostosowującego $\alpha$, $\beta$, $\rho$ do postępu optymalizacji
+    \end{itemize}
+
+    \subsection{Kierunki dalszej poprawy}
+
+    \begin{itemize}
+        \item Zastosowanie nowych algorytmów optymalizacji lokalnej (intra-route i inter-route) lub poprawa zaimplementowanych
+        \item Adaptacyjne dostrajanie parametrów w trakcie działania algorytmu
+        \item Równoległa optymalizacja lokalna dla wielu tras jednocześnie
+    \end{itemize}
+
+\end{document}

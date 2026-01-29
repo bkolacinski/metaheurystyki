@@ -34,7 +34,7 @@ def run_multiple_times(
     dist_matrix = calculate_distance_matrix(data["coords"])
 
     if verbose:
-        print(f"\n{'='*70}")
+        print(f"\n{'=' * 70}")
         print(f"Instancja: {data['name']}")
         print(
             f"Klienci: {len(data['coords']) - 1} | Pojemność: {data['capacity']} | Dostępne pojazdy: {data['n_vehicles']}"
@@ -60,7 +60,7 @@ def run_multiple_times(
 
         try:
             if verbose:
-                print(f"\n[Run {run+1}/{n_runs}]", end=" ", flush=True)
+                print(f"\n[Run {run + 1}/{n_runs}]", end=" ", flush=True)
 
             routes, n_veh, dist = aco_vrptw(
                 distance_matrix=dist_matrix,
@@ -94,10 +94,7 @@ def run_multiple_times(
                     route.tolist() if hasattr(route, "tolist") else route
                     for route in routes
                 ]
-                routes_np = [
-                    np.array([0] + r + [0], dtype=np.int64)
-                    for r in routes_list
-                ]
+                routes_np = [np.array(r, dtype=np.int64) for r in routes_list]
 
                 import contextlib
                 import io
@@ -114,6 +111,8 @@ def run_multiple_times(
                         float(data["capacity"]),
                         max_iterations=10,
                     )
+
+                improved_routes = [r for r in improved_routes if len(r) > 2]
 
                 # Calculate after inter-route
                 temp_dist = sum(
@@ -257,7 +256,7 @@ def run_multiple_times(
 
             print("\nCZAS OBLICZEŃ:")
             print(f"  Całkowity: {total_time:.2f}s")
-            print(f"  Średni na uruchomienie: {total_time/n_runs:.2f}s")
+            print(f"  Średni na uruchomienie: {total_time / n_runs:.2f}s")
 
             vehicles_list = [r["n_vehicles"] for r in valid_results]
             distances_list = [r["distance"] for r in valid_results]
@@ -337,6 +336,9 @@ def visualize_solution(
         else:
             route_list = route
 
+        if len(route_list) == 0:
+            continue
+
         if route_list and route_list[0] == 0:
             route_list = route_list[1:]
         if route_list and route_list[-1] == 0:
@@ -352,7 +354,7 @@ def visualize_solution(
             linewidth=2,
             alpha=0.7,
             zorder=2,
-            label=f"Trasa {route_idx+1} ({len(route_list)} klientów)",
+            label=f"Trasa {route_idx + 1} ({len(route_list)} klientów)",
         )
 
         for customer_idx in route_list:
