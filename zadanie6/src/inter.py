@@ -1,14 +1,8 @@
-"""
-Inter-route operators for VRPTW.
-
-This module implements the Relocate operator which moves a customer
-from one route to another while maintaining time window feasibility.
-"""
+from typing import List, Tuple
 
 import numpy as np
 import numpy.typing as npt
 from numba import njit, prange
-from typing import List, Tuple
 
 
 @njit(cache=True)
@@ -20,11 +14,6 @@ def _calculate_route_completion_time(
     window_ends: npt.NDArray[np.float64],
     start_idx: int = 1,
 ) -> tuple[float, bool]:
-    """
-    Calculate the completion time of a route from start_idx to end.
-
-    Returns (completion_time, is_feasible)
-    """
     current_time: float = 0.0
 
     for i in range(start_idx, len(route)):
@@ -53,19 +42,13 @@ def _find_best_insertion_position(
     window_ends: npt.NDArray[np.float64],
     start_time: float,
 ) -> tuple[int, float, bool]:
-    """
-    Find the best position to insert a customer in a route.
-
-    Returns (best_position, additional_cost, is_feasible)
-    additional_cost = extra distance/time from inserting at that position
-    """
     n: int = len(target_route)
 
     if n == 0:
         return 0, 0.0, True
 
     best_position: int = 0
-    best_cost: float = float('inf')
+    best_cost: float = float("inf")
     feasible: bool = False
 
     for pos in range(1, n):
@@ -82,9 +65,12 @@ def _find_best_insertion_position(
             arrival_at_customer = float(window_starts[customer])
 
         travel_from_customer = float(distance_matrix[customer, to_node])
-        arrival_at_next = arrival_at_customer + float(service_times[customer]) + travel_from_customer
+        arrival_at_next = (
+            arrival_at_customer
+            + float(service_times[customer])
+            + travel_from_customer
+        )
 
-        # Check feasibility of the rest of the route
         current_time = arrival_at_next
         route_feasible = True
 
@@ -128,12 +114,6 @@ def find_best_relocate_move(
     demands: npt.NDArray[np.float64],
     capacity: float,
 ) -> npt.NDArray[np.float64]:
-    """
-    Find the best relocate move across all routes.
-
-    Returns [delta_cost, from_route, to_route, customer_idx, insert_position]
-    Negative delta_cost means improvement.
-    """
     n_routes: int = len(routes)
     best_move = np.array([0.0, -1.0, -1.0, -1.0, -1.0], dtype=np.float64)
 
@@ -162,14 +142,16 @@ def find_best_relocate_move(
 
                 start_time: float = 0.0
 
-                insert_pos, insert_cost, feasible = _find_best_insertion_position(
-                    customer,
-                    to_route,
-                    distance_matrix,
-                    service_times,
-                    window_starts,
-                    window_ends,
-                    start_time,
+                insert_pos, insert_cost, feasible = (
+                    _find_best_insertion_position(
+                        customer,
+                        to_route,
+                        distance_matrix,
+                        service_times,
+                        window_starts,
+                        window_ends,
+                        start_time,
+                    )
                 )
 
                 if not feasible:
@@ -208,11 +190,6 @@ def apply_relocate_move(
     routes: list[npt.NDArray[np.int64]],
     move: npt.NDArray[np.float64],
 ) -> list[npt.NDArray[np.int64]]:
-    """
-    Apply a relocate move to the routes.
-
-    move = [delta_cost, from_route, to_route, customer_pos, insert_pos]
-    """
     from_route_idx = int(move[1])
     to_route_idx = int(move[2])
     customer_pos = int(move[3])
@@ -254,11 +231,6 @@ def relocate_operator(
     capacity: float,
     max_iterations: int = 10,
 ) -> list[npt.NDArray[np.int64]]:
-    """
-    Iteratively apply relocate operator until no improvement.
-
-    Returns the improved routes.
-    """
     current_routes = routes.copy()
 
     for iteration in range(max_iterations):
@@ -274,7 +246,9 @@ def relocate_operator(
 
         if best_move[0] < -1e-7:
             current_routes = apply_relocate_move(current_routes, best_move)
-            print(f"Relocate iteration {iteration + 1}: improved by {-best_move[0]:.2f}")
+            print(
+                f"Relocate iteration {iteration + 1}: improved by {-best_move[0]:.2f}"
+            )
         else:
             break
 
@@ -289,11 +263,6 @@ def calculate_solution_stats(
     window_starts: npt.NDArray[np.float64],
     window_ends: npt.NDArray[np.float64],
 ) -> tuple[int, float, int]:
-    """
-    Calculate statistics for a VRPTW solution.
-
-    Returns (n_vehicles, total_distance, n_infeasible)
-    """
     n_vehicles = len(routes)
     total_distance = 0.0
     n_infeasible = 0
@@ -322,52 +291,3 @@ def calculate_solution_stats(
             total_distance += float(distance_matrix[route[-1], route[0]])
 
     return n_vehicles, total_distance, n_infeasible
-
-
-if __name__ == "__main__":
-    from data_loader import read_to_solomon_data
-    from utils import calculate_distance_matrix
-
-    data = read_to_solomon_data("../data/c107.txt")
-    print(f"Instance: {data['name']}")
-
-    dist_mtx = calculate_distance_matrix(data["coords"])
-
-    n_customers = len(data["coords"]) - 1
-    mid = n_customers // 2
-
-    route1 = np.array([0] + list(range(1, mid + 1)) + [0], dtype=np.int64)
-    route2 = np.array([0] + list(range(mid + 1, n_customers + 1)) + [0], dtype=np.int64)
-
-    routes = [route1, route2]
-
-    print(f"Initial routes:")
-    for i, r in enumerate(routes):
-        print(f"  Route {i + 1}: {r}")
-
-    n_veh, dist, inf = calculate_solution_stats(
-        routes, dist_mtx, data["service_times"],
-        data["window_starts"], data["window_ends"]
-    )
-    print(f"\nInitial: {n_veh} vehicles, {dist:.2f} distance, {inf} infeasible")
-
-    improved_routes = relocate_operator(
-        routes,
-        dist_mtx,
-        data["service_times"],
-        data["window_starts"],
-        data["window_ends"],
-        data["demands"],
-        float(data["capacity"]),
-        max_iterations=20,
-    )
-
-    print(f"\nImproved routes:")
-    for i, r in enumerate(improved_routes):
-        print(f"  Route {i + 1}: {r}")
-
-    n_veh, dist, inf = calculate_solution_stats(
-        improved_routes, dist_mtx, data["service_times"],
-        data["window_starts"], data["window_ends"]
-    )
-    print(f"\nAfter relocate: {n_veh} vehicles, {dist:.2f} distance, {inf} infeasible")

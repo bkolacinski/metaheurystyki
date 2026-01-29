@@ -66,8 +66,3 @@ def read_to_solomon_data(file_path: str) -> SolomonData:
     }
 
     return result
-
-
-if __name__ == "__main__":
-    data = read_to_solomon_data("../data/c107.txt")
-    print(data)
