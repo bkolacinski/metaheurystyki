@@ -15,7 +15,7 @@ from src.utils import calculate_distance_matrix
 
 FIXED_N_ANTS = 200
 FIXED_N_ITERATIONS = 100
-N_RUNS_PER_CONFIG = 5
+N_RUNS_PER_CONFIG = 3
 
 PARAMETER_GRID = {
     "C": {
@@ -52,7 +52,7 @@ def get_instance_type(instance_name: str) -> str:
 def test_configuration_wrapper(args):
     instance_name, data, dist_matrix, config, run_number, total_runs = args
     return test_configuration(
-        instance_name, data, dist_matrix, config, run_number, total_runs
+        data, dist_matrix, config
     )
 
 
@@ -277,7 +277,6 @@ def tune_instance(
 
 
 def save_results(tuning_results: Dict, output_dir: str = "results"):
-    """Save tuning results to files."""
     os.makedirs(output_dir, exist_ok=True)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
