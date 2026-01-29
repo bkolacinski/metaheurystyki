@@ -1,13 +1,53 @@
 """
-VRPTW Solver - Greedy with local search.
-Uses Solomon's insertion heuristic for route construction.
+VRPTW Solver using proper Ant Colony Optimization (ACO) with Numba acceleration.
+
+This is a TRUE ACO implementation with the following key components:
+
+1. PHEROMONE TRAILS (τ):
+   - Maintained on edges between nodes
+   - Evaporate over time (controlled by ρ)
+   - Deposited by best solutions
+
+2. PROBABILISTIC SOLUTION CONSTRUCTION:
+   - Ants build solutions probabilistically based on:
+     * Pheromone intensity: τ^α (learned information)
+     * Heuristic desirability: η^β (distance + time window urgency)
+   - Uses pseudo-random proportional rule (ACS variant):
+     * With probability q0: exploit best choice
+     * Otherwise: explore probabilistically
+
+3. HEURISTIC INFORMATION MATRIX (η):
+   - Combines distance information (1/distance)
+   - Time window urgency (prefers tighter windows)
+   - Guides ants toward promising customers
+
+4. PHEROMONE UPDATE:
+   - Evaporation: τ = τ * (1 - ρ) - old pheromones fade
+   - Deposition: Best solutions deposit pheromone ∝ 1/cost
+   - Uses global best solution (elitist strategy)
+   - Bounded to prevent premature convergence
+
+5. PARALLEL EXECUTION:
+   - All ants construct solutions in parallel using @njit(parallel=True)
+   - Heavy computations optimized with Numba JIT compilation
+
+Parameters:
+- α (alpha): Pheromone importance (default: 1.0)
+- β (beta): Heuristic importance (default: 2.0)
+- ρ (rho): Evaporation rate (default: 0.1)
+- q0: Exploitation threshold (default: 0.9)
+- n_ants: Number of ants per iteration
+- n_iterations: Number of iterations
+
+This implementation follows the ACO metaheuristic with proper pheromone-based learning,
+unlike greedy heuristics that don't use pheromones or probabilistic selection.
 """
+
+from typing import List, Tuple
 
 import numpy as np
 import numpy.typing as npt
-from typing import List, Tuple
-from src.utils import is_route_feasible
-from src.solver import calculate_total_distance
+from numba import njit, prange
 
 
 def estimate_speed_factor(
@@ -17,273 +57,42 @@ def estimate_speed_factor(
 ) -> float:
     """
     Estimate speed factor from data.
-
-    For Solomon benchmarks, distance and time are already compatible,
-    so speed_factor should be 1.0.
+    For Solomon benchmarks, distance and time are already compatible.
     """
-    # For Solomon data, use 1.0 as distances are in compatible units with time
     return 1.0
 
 
-def _try_insert_customer(
-    customer: int,
-    route: List[int],
-    current_time: float,
+@njit(cache=True)
+def compute_heuristic_matrix(
     distance_matrix: npt.NDArray[np.float64],
-    service_times: npt.NDArray[np.float64],
     window_starts: npt.NDArray[np.float64],
     window_ends: npt.NDArray[np.float64],
-    speed_factor: float,
-) -> Tuple[float, float, bool]:
+) -> npt.NDArray[np.float64]:
     """
-    Try inserting a customer at the best position in the route.
-
-    Returns (additional_time, arrival_time, is_feasible).
-    additional_time = extra time from inserting at best position
+    Compute heuristic desirability matrix (eta).
+    Combines distance and time window urgency.
     """
-    n = len(route)
-    if n == 0:
-        return 0.0, 0.0, True
+    n_nodes = len(distance_matrix)
+    eta = np.zeros((n_nodes, n_nodes), dtype=np.float64)
 
-    best_additional_time = float('inf')
-    best_arrival = 0.0
-    best_feasible = False
+    for i in range(n_nodes):
+        for j in range(n_nodes):
+            if i != j and distance_matrix[i, j] > 0:
+                # Base heuristic: inverse of distance
+                dist_component = 1.0 / distance_matrix[i, j]
 
-    # If route is just [0], insert at position 1 (after depot, before return)
-    if n == 1:
-        from_node = route[0]  # depot
-        travel_to = distance_matrix[from_node, customer] * speed_factor
-        arrival = current_time + travel_to
+                # Time window urgency: prefer nodes with tighter windows
+                tw_width = window_ends[j] - window_starts[j]
+                tw_component = 1.0 / (tw_width + 1.0)
 
-        if arrival <= window_ends[customer]:
-            if arrival < window_starts[customer]:
-                arrival = window_starts[customer]
+                # Combine components
+                eta[i, j] = dist_component * (1.0 + 0.5 * tw_component)
 
-            # Additional time cost (just going to customer, we'll add return later)
-            additional = distance_matrix[from_node, customer] * speed_factor
-            return additional, arrival, True
-        return float('inf'), 0.0, False
-
-    for pos in range(1, n):
-        from_node = route[pos - 1]
-        to_node = route[pos]
-
-        travel_to = distance_matrix[from_node, customer] * speed_factor
-        arrival = current_time + travel_to
-
-        if arrival > window_ends[customer]:
-            continue
-
-        if arrival < window_starts[customer]:
-            arrival = window_starts[customer]
-
-        arrival += service_times[customer]
-
-        travel_from = distance_matrix[customer, to_node] * speed_factor
-        new_arrival_next = arrival + travel_from
-
-        # Check if rest of route remains feasible
-        original_next_arrival = current_time
-        for k in range(pos + 1, n):
-            original_next_arrival += distance_matrix[route[k - 1], route[k]] * speed_factor
-            if original_next_arrival < window_starts[route[k]]:
-                original_next_arrival = window_starts[route[k]]
-            original_next_arrival += service_times[route[k]]
-
-        # Check feasibility with time shift
-        check_time = new_arrival_next
-        route_feasible = True
-        for k in range(pos + 1, n):
-            next_node = route[k]
-            check_time += distance_matrix[route[k - 1], next_node] * speed_factor
-
-            if check_time < window_starts[next_node]:
-                check_time = window_starts[next_node]
-            elif check_time > window_ends[next_node]:
-                route_feasible = False
-                break
-
-            check_time += service_times[next_node]
-
-        if not route_feasible:
-            continue
-
-        # Additional time cost
-        additional = (
-            distance_matrix[from_node, customer] * speed_factor +
-            distance_matrix[customer, to_node] * speed_factor -
-            distance_matrix[from_node, to_node] * speed_factor
-        )
-
-        if additional < best_additional_time:
-            best_additional_time = additional
-            best_arrival = arrival - service_times[customer]
-            best_feasible = True
-
-    return best_additional_time, best_arrival, best_feasible
+    return eta
 
 
-def _get_route_time_info(
-    route: List[int],
-    distance_matrix: npt.NDArray[np.float64],
-    service_times: npt.NDArray[np.float64],
-    window_starts: npt.NDArray[np.float64],
-    window_ends: npt.NDArray[np.float64],
-    speed_factor: float,
-) -> Tuple[float, float, float, bool]:
-    """Get travel time, waiting time, completion time and feasibility of a route."""
-    current_time = 0.0
-    total_travel = 0.0
-    total_wait = 0.0
-
-    for i in range(1, len(route)):
-        from_node = route[i - 1]
-        to_node = route[i]
-        travel = distance_matrix[from_node, to_node] * speed_factor
-        total_travel += travel
-        current_time += travel
-
-        if current_time < window_starts[to_node]:
-            total_wait += window_starts[to_node] - current_time
-            current_time = window_starts[to_node]
-        elif current_time > window_ends[to_node]:
-            return 0.0, 0.0, 0.0, False
-
-        current_time += service_times[to_node]
-
-    return total_travel, total_wait, current_time, True
-
-
-def build_route_insertion(
-    unvisited: List[int],
-    distance_matrix: npt.NDArray[np.float64],
-    service_times: npt.NDArray[np.float64],
-    window_starts: npt.NDArray[np.float64],
-    window_ends: npt.NDArray[np.float64],
-    demands: npt.NDArray[np.float64],
-    capacity: float,
-    speed_factor: float,
-    shuffle: bool = False,
-) -> Tuple[List[int], List[int]]:
-    """
-    Build a route using Solomon's insertion heuristic.
-
-    Returns (route, served_customers).
-    """
-    import random
-
-    route = [0]  # Start at depot
-    current_load = 0.0
-    current_time = 0.0
-    served = []
-
-    # Make a copy that we can modify
-    candidates = unvisited.copy()
-    if shuffle:
-        random.shuffle(candidates)
-
-    while candidates:
-        best_customer = -1
-        best_cost = float('inf')
-        best_arrival = 0.0
-
-        for customer in candidates:
-            if current_load + demands[customer] > capacity:
-                continue
-
-            from_node = route[-1]
-            travel_time = distance_matrix[from_node, customer] * speed_factor
-            arrival_time = current_time + travel_time
-
-            if arrival_time > window_ends[customer]:
-                continue
-
-            if arrival_time < window_starts[customer]:
-                arrival_time = window_starts[customer]
-
-            # Cost function: extra time to serve this customer
-            cost = arrival_time - current_time
-
-            if cost < best_cost:
-                best_cost = cost
-                best_customer = customer
-                best_arrival = arrival_time
-
-        if best_customer < 1:
-            break
-
-        # Add best customer to route
-        route.append(best_customer)
-        served.append(best_customer)
-        current_load += demands[best_customer]
-
-        if best_arrival < window_starts[best_customer]:
-            best_arrival = window_starts[best_customer]
-        current_time = best_arrival + service_times[best_customer]
-
-        candidates.remove(best_customer)
-
-    route.append(0)  # Return to depot
-    return route, served
-
-
-def build_route_insertion_full(
-    unvisited: List[int],
-    distance_matrix: npt.NDArray[np.float64],
-    service_times: npt.NDArray[np.float64],
-    window_starts: npt.NDArray[np.float64],
-    window_ends: npt.NDArray[np.float64],
-    demands: npt.NDArray[np.float64],
-    capacity: float,
-    speed_factor: float,
-) -> Tuple[List[int], float]:
-    """Build a route trying all insertion positions (Solomon's c1 + best position)."""
-    route = [0]  # Start at depot
-    current_load = 0.0
-
-    while unvisited:
-        best_customer = -1
-        best_pos = -1
-        best_cost = float('inf')
-
-        for idx, customer in enumerate(unvisited):
-            if current_load + demands[customer] > capacity:
-                continue
-
-            # Try all positions in the route
-            for insert_pos in range(1, len(route)):
-                # Simulate insertion
-                new_route = route[:insert_pos] + [customer] + route[insert_pos:]
-
-                travel, wait, end_time, feasible = _get_route_time_info(
-                    new_route, distance_matrix, service_times,
-                    window_starts, window_ends, speed_factor
-                )
-
-                if feasible:
-                    cost = travel + 0.5 * wait  # Solomon c1 with waiting time
-                    if cost < best_cost:
-                        best_cost = cost
-                        best_customer = customer
-                        best_pos = insert_pos
-
-        if best_customer < 0:
-            break
-
-        # Insert at best position
-        for idx, c in enumerate(unvisited):
-            if c == best_customer:
-                unvisited.pop(idx)
-                break
-
-        route.insert(best_pos, best_customer)
-        current_load += demands[best_customer]
-
-    route.append(0)
-    return route, 0.0
-
-
-def solve_vrptw(
+@njit(cache=True)
+def nearest_neighbor_cost(
     distance_matrix: npt.NDArray[np.float64],
     service_times: npt.NDArray[np.float64],
     window_starts: npt.NDArray[np.float64],
@@ -291,72 +100,457 @@ def solve_vrptw(
     demands: npt.NDArray[np.float64],
     capacity: float,
     n_vehicles_available: int,
-    n_iterations: int = 100,
-    verbose: bool = False,
-    speed_factor: float = None,
-) -> Tuple[List[npt.NDArray[np.int64]], int, float]:
-    """Solve VRPTW using greedy insertion heuristic with random shuffling."""
+    speed_factor: float,
+) -> float:
+    """
+    Estimate initial solution cost using nearest neighbor heuristic.
+    Used to initialize pheromone levels.
+    """
     n_nodes = len(distance_matrix)
+    unvisited = np.ones(n_nodes, dtype=np.int32)
+    unvisited[0] = 0  # Depot already visited
 
-    if speed_factor is None:
-        speed_factor = estimate_speed_factor(distance_matrix, window_starts, window_ends)
+    total_distance = 0.0
+    n_routes = 0
 
-    best_routes = []
-    best_n_vehicles = n_vehicles_available + 1
-    best_distance = float('inf')
-    VEHICLE_PENALTY = 10000.0
+    while np.sum(unvisited) > 0 and n_routes < n_vehicles_available:
+        current_node = 0
+        current_time = 0.0
+        current_load = 0.0
+        route_distance = 0.0
 
-    for iteration in range(n_iterations):
-        unvisited = list(range(1, n_nodes))
-        routes = []
+        while True:
+            # Find nearest feasible customer
+            best_customer = -1
+            best_dist = np.inf
 
-        while unvisited and len(routes) < n_vehicles_available:
-            route, served = build_route_insertion(
-                unvisited,
-                distance_matrix, service_times, window_starts, window_ends,
-                demands, capacity, speed_factor,
-                shuffle=(iteration > 0)
-            )
+            for customer in range(1, n_nodes):
+                if unvisited[customer] == 0:
+                    continue
 
-            if len(served) == 0:
+                if current_load + demands[customer] > capacity:
+                    continue
+
+                travel_time = (
+                    distance_matrix[current_node, customer] * speed_factor
+                )
+                arrival_time = current_time + travel_time
+
+                if arrival_time > window_ends[customer]:
+                    continue
+
+                if distance_matrix[current_node, customer] < best_dist:
+                    best_dist = distance_matrix[current_node, customer]
+                    best_customer = customer
+
+            if best_customer < 0:
                 break
 
-            # Remove served customers from unvisited
-            for customer in served:
-                if customer in unvisited:
-                    unvisited.remove(customer)
-
-            routes.append(np.array(route, dtype=np.int64))
-
-        # Check if all customers served
-        if len(unvisited) > 0:
-            continue
-
-        # Evaluate
-        n_veh = len(routes)
-        feasible = True
-        total_dist = 0.0
-
-        for route in routes:
-            feas = is_route_feasible(
-                route, distance_matrix, service_times, window_starts, window_ends, speed_factor
+            # Move to best customer
+            travel_time = (
+                distance_matrix[current_node, best_customer] * speed_factor
             )
-            if not feas:
+            arrival_time = current_time + travel_time
+
+            if arrival_time < window_starts[best_customer]:
+                arrival_time = window_starts[best_customer]
+
+            route_distance += distance_matrix[current_node, best_customer]
+            current_time = arrival_time + service_times[best_customer]
+            current_load += demands[best_customer]
+            current_node = best_customer
+            unvisited[best_customer] = 0
+
+        # Return to depot
+        route_distance += distance_matrix[current_node, 0]
+        total_distance += route_distance
+        n_routes += 1
+
+    if np.sum(unvisited) > 0:
+        return 1000000.0  # Infeasible
+
+    VEHICLE_PENALTY = 10000.0
+    return n_routes * VEHICLE_PENALTY + total_distance
+
+
+@njit(cache=True)
+def select_next_customer(
+    current_node: int,
+    feasible: npt.NDArray[np.int32],
+    n_feasible: int,
+    pheromone: npt.NDArray[np.float64],
+    eta: npt.NDArray[np.float64],
+    alpha: float,
+    beta: float,
+    q0: float,
+    rand_val: float,
+) -> int:
+    """
+    Select next customer using ACO transition rule.
+    Uses pseudo-random proportional rule (ACS variant).
+    """
+    if n_feasible == 0:
+        return -1
+
+    # Calculate attractiveness for each feasible customer
+    attractiveness = np.zeros(n_feasible, dtype=np.float64)
+
+    for idx in range(n_feasible):
+        customer = feasible[idx]
+        tau = pheromone[current_node, customer]
+        eta_val = eta[current_node, customer]
+        attractiveness[idx] = (tau**alpha) * (eta_val**beta)
+
+    # Exploitation vs exploration
+    if rand_val < q0:
+        # Exploitation: select best customer
+        best_idx = 0
+        best_val = attractiveness[0]
+        for idx in range(1, n_feasible):
+            if attractiveness[idx] > best_val:
+                best_val = attractiveness[idx]
+                best_idx = idx
+        return int(feasible[best_idx])
+    else:
+        # Exploration: probabilistic selection
+        total_attract = np.sum(attractiveness)
+
+        if total_attract == 0:
+            # Choose randomly
+            rand_idx = int(rand_val * n_feasible) % n_feasible
+            return int(feasible[rand_idx])
+
+        # Roulette wheel selection
+        probabilities = attractiveness / total_attract
+        cumulative = 0.0
+        rand_choice = rand_val
+
+        for idx in range(n_feasible):
+            cumulative += probabilities[idx]
+            if rand_choice <= cumulative:
+                return int(feasible[idx])
+
+        return int(feasible[n_feasible - 1])
+
+
+@njit(cache=True)
+def construct_ant_solution(
+    distance_matrix: npt.NDArray[np.float64],
+    service_times: npt.NDArray[np.float64],
+    window_starts: npt.NDArray[np.float64],
+    window_ends: npt.NDArray[np.float64],
+    demands: npt.NDArray[np.float64],
+    capacity: float,
+    n_vehicles_available: int,
+    pheromone: npt.NDArray[np.float64],
+    eta: npt.NDArray[np.float64],
+    alpha: float,
+    beta: float,
+    q0: float,
+    speed_factor: float,
+    random_values: npt.NDArray[np.float64],
+    rand_idx: int,
+) -> tuple:
+    """
+    Construct solution for one ant using probabilistic selection.
+    Returns (routes_flat, route_lengths, n_routes, success).
+
+    routes_flat: flattened array of all routes concatenated
+    route_lengths: length of each route
+    n_routes: number of routes
+    success: whether all customers were served
+    """
+    n_nodes = len(distance_matrix)
+    unvisited = np.ones(n_nodes, dtype=np.int32)
+    unvisited[0] = 0  # Depot
+
+    # Pre-allocate arrays for routes
+    max_nodes_per_route = n_nodes
+    max_routes = n_vehicles_available
+    routes_flat = np.zeros(max_nodes_per_route * max_routes, dtype=np.int32)
+    route_lengths = np.zeros(max_routes, dtype=np.int32)
+    n_routes = 0
+    flat_idx = 0
+
+    while np.sum(unvisited) > 0 and n_routes < n_vehicles_available:
+        # Start new route
+        route_start_idx = flat_idx
+        routes_flat[flat_idx] = 0  # Depot
+        flat_idx += 1
+
+        current_node = 0
+        current_time = 0.0
+        current_load = 0.0
+
+        while True:
+            # Find feasible customers
+            feasible = np.zeros(n_nodes, dtype=np.int32)
+            n_feasible = 0
+
+            for customer in range(1, n_nodes):
+                if unvisited[customer] == 0:
+                    continue
+
+                if current_load + demands[customer] > capacity:
+                    continue
+
+                travel_time = (
+                    distance_matrix[current_node, customer] * speed_factor
+                )
+                arrival_time = current_time + travel_time
+
+                if arrival_time > window_ends[customer]:
+                    continue
+
+                feasible[n_feasible] = customer
+                n_feasible += 1
+
+            if n_feasible == 0:
+                break
+
+            # Select next customer
+            rand_val = random_values[
+                (rand_idx + flat_idx) % len(random_values)
+            ]
+            next_customer = select_next_customer(
+                current_node,
+                feasible,
+                n_feasible,
+                pheromone,
+                eta,
+                alpha,
+                beta,
+                q0,
+                rand_val,
+            )
+
+            if next_customer < 0:
+                break
+
+            # Add customer to route
+            routes_flat[flat_idx] = next_customer
+            flat_idx += 1
+            unvisited[next_customer] = 0
+
+            # Update state
+            travel_time = (
+                distance_matrix[current_node, next_customer] * speed_factor
+            )
+            arrival_time = current_time + travel_time
+
+            if arrival_time < window_starts[next_customer]:
+                arrival_time = window_starts[next_customer]
+
+            current_time = arrival_time + service_times[next_customer]
+            current_load += demands[next_customer]
+            current_node = next_customer
+
+        # Return to depot
+        routes_flat[flat_idx] = 0
+        flat_idx += 1
+
+        route_lengths[n_routes] = flat_idx - route_start_idx
+        n_routes += 1
+
+        # Only add route if it has customers
+        if route_lengths[n_routes - 1] <= 2:
+            flat_idx = route_start_idx
+            n_routes -= 1
+            break
+
+    success = np.sum(unvisited) == 0
+
+    return routes_flat, route_lengths, n_routes, success
+
+
+@njit(cache=True)
+def evaluate_solution(
+    routes_flat: npt.NDArray[np.int32],
+    route_lengths: npt.NDArray[np.int32],
+    n_routes: int,
+    distance_matrix: npt.NDArray[np.float64],
+    service_times: npt.NDArray[np.float64],
+    window_starts: npt.NDArray[np.float64],
+    window_ends: npt.NDArray[np.float64],
+    speed_factor: float,
+) -> float:
+    """
+    Evaluate solution quality.
+    Returns cost (minimize vehicles first, then distance).
+    """
+    if n_routes == 0:
+        return float(np.inf)
+
+    total_distance = 0.0
+    flat_idx = 0
+
+    for r in range(n_routes):
+        route_len = route_lengths[r]
+
+        # Extract route
+        route = routes_flat[flat_idx : flat_idx + route_len]
+
+        # Check feasibility
+        current_time = 0.0
+        feasible = True
+
+        for i in range(1, route_len):
+            from_node = route[i - 1]
+            to_node = route[i]
+
+            travel_time = distance_matrix[from_node, to_node] * speed_factor
+            current_time += travel_time
+
+            if current_time < window_starts[to_node]:
+                current_time = window_starts[to_node]
+            elif current_time > window_ends[to_node]:
                 feasible = False
                 break
-            total_dist += calculate_total_distance(route, distance_matrix)
 
-        if feasible:
-            score = n_veh * VEHICLE_PENALTY + total_dist
+            current_time += service_times[to_node]
+            total_distance += distance_matrix[from_node, to_node]
 
-            if n_veh < best_n_vehicles or (n_veh == best_n_vehicles and total_dist < best_distance):
-                best_n_vehicles = n_veh
-                best_distance = total_dist
-                best_routes = routes
-                if verbose:
-                    print(f"  Iteration {iteration}: {n_veh} vehicles, {total_dist:.2f}")
+        if not feasible:
+            return float(np.inf)
 
-    return best_routes, best_n_vehicles, best_distance
+        flat_idx += route_len
+
+    # Cost function: prioritize fewer vehicles, then shorter distance
+    VEHICLE_PENALTY = 10000.0
+    return float(n_routes * VEHICLE_PENALTY + total_distance)
+
+
+@njit(parallel=True, cache=True)
+def construct_all_ant_solutions(
+    n_ants: int,
+    distance_matrix: npt.NDArray[np.float64],
+    service_times: npt.NDArray[np.float64],
+    window_starts: npt.NDArray[np.float64],
+    window_ends: npt.NDArray[np.float64],
+    demands: npt.NDArray[np.float64],
+    capacity: float,
+    n_vehicles_available: int,
+    pheromone: npt.NDArray[np.float64],
+    eta: npt.NDArray[np.float64],
+    alpha: float,
+    beta: float,
+    q0: float,
+    speed_factor: float,
+    random_values: npt.NDArray[np.float64],
+) -> tuple:
+    """
+    Construct solutions for all ants in parallel.
+    Returns arrays containing all ant solutions and their costs.
+    """
+    n_nodes = len(distance_matrix)
+    max_nodes = n_nodes * n_vehicles_available
+
+    # Pre-allocate arrays for all ants
+    all_routes_flat = np.zeros((n_ants, max_nodes), dtype=np.int32)
+    all_route_lengths = np.zeros(
+        (n_ants, n_vehicles_available), dtype=np.int32
+    )
+    all_n_routes = np.zeros(n_ants, dtype=np.int32)
+    all_costs = np.zeros(n_ants, dtype=np.float64)
+    all_success = np.zeros(n_ants, dtype=np.int32)
+
+    for ant in prange(n_ants):
+        # Each ant gets a different starting point in random values
+        rand_offset = ant * 1000
+
+        routes_flat, route_lengths, n_routes, success = construct_ant_solution(
+            distance_matrix,
+            service_times,
+            window_starts,
+            window_ends,
+            demands,
+            capacity,
+            n_vehicles_available,
+            pheromone,
+            eta,
+            alpha,
+            beta,
+            q0,
+            speed_factor,
+            random_values,
+            rand_offset,
+        )
+
+        all_routes_flat[ant] = routes_flat
+        all_route_lengths[ant] = route_lengths
+        all_n_routes[ant] = n_routes
+        all_success[ant] = 1 if success else 0
+
+        if success:
+            cost = evaluate_solution(
+                routes_flat,
+                route_lengths,
+                n_routes,
+                distance_matrix,
+                service_times,
+                window_starts,
+                window_ends,
+                speed_factor,
+            )
+            all_costs[ant] = cost
+        else:
+            all_costs[ant] = float(np.inf)
+
+    return (
+        all_routes_flat,
+        all_route_lengths,
+        all_n_routes,
+        all_costs,
+        all_success,
+    )
+
+
+@njit(cache=True)
+def update_pheromones(
+    pheromone: npt.NDArray[np.float64],
+    best_routes_flat: npt.NDArray[np.int32],
+    best_route_lengths: npt.NDArray[np.int32],
+    best_n_routes: int,
+    best_cost: float,
+    rho: float,
+    min_pheromone: float,
+    max_pheromone: float,
+):
+    """
+    Update pheromone trails.
+    Uses global update rule (only best solution deposits pheromone).
+    Modifies pheromone matrix in-place.
+    """
+    n_nodes = pheromone.shape[0]
+
+    # Evaporation
+    for i in range(n_nodes):
+        for j in range(n_nodes):
+            pheromone[i, j] *= 1.0 - rho
+
+    # Deposit pheromone on best solution
+    if best_cost < np.inf and best_n_routes > 0:
+        delta_tau = 1.0 / best_cost
+
+        flat_idx = 0
+        for r in range(best_n_routes):
+            route_len = best_route_lengths[r]
+
+            for i in range(route_len - 1):
+                from_node = best_routes_flat[flat_idx + i]
+                to_node = best_routes_flat[flat_idx + i + 1]
+                pheromone[from_node, to_node] += delta_tau
+                pheromone[to_node, from_node] += delta_tau  # Symmetric
+
+            flat_idx += route_len
+
+    # Ensure pheromone levels stay within bounds
+    for i in range(n_nodes):
+        for j in range(n_nodes):
+            if pheromone[i, j] < min_pheromone:
+                pheromone[i, j] = min_pheromone
+            elif pheromone[i, j] > max_pheromone:
+                pheromone[i, j] = max_pheromone
 
 
 def aco_vrptw(
@@ -372,22 +566,170 @@ def aco_vrptw(
     alpha: float = 1.0,
     beta: float = 2.0,
     rho: float = 0.1,
+    q0: float = 0.9,
     verbose: bool = False,
-    speed_factor: float = None,
+    speed_factor: float = 1.0,
 ) -> Tuple[List[npt.NDArray[np.int64]], int, float]:
-    """Wrapper for VRPTW solver."""
-    return solve_vrptw(
-        distance_matrix=distance_matrix,
-        service_times=service_times,
-        window_starts=window_starts,
-        window_ends=window_ends,
-        demands=demands,
-        capacity=capacity,
-        n_vehicles_available=n_vehicles_available,
-        n_iterations=n_iterations,
-        verbose=verbose,
-        speed_factor=speed_factor,
+    """
+    Solve VRPTW using Ant Colony Optimization with Numba acceleration.
+
+    Args:
+        distance_matrix: Distance between nodes
+        service_times: Service time at each node
+        window_starts: Time window start for each node
+        window_ends: Time window end for each node
+        demands: Demand at each node
+        capacity: Vehicle capacity
+        n_vehicles_available: Maximum number of vehicles
+        n_ants: Number of ants per iteration
+        n_iterations: Number of iterations
+        alpha: Pheromone importance (default: 1.0)
+        beta: Heuristic importance (default: 2.0)
+        rho: Evaporation rate (default: 0.1)
+        q0: Exploitation threshold (default: 0.9)
+        verbose: Print progress
+        speed_factor: Factor to convert distance to time
+
+    Returns:
+        routes: List of routes (numpy arrays)
+        n_vehicles: Number of vehicles used
+        total_distance: Total distance traveled
+    """
+    n_nodes = len(distance_matrix)
+
+    if speed_factor == 1.0:
+        speed_factor = estimate_speed_factor(
+            distance_matrix, window_starts, window_ends
+        )
+
+    # Compute heuristic matrix
+    eta = compute_heuristic_matrix(distance_matrix, window_starts, window_ends)
+
+    # Initialize pheromones
+    nn_cost = nearest_neighbor_cost(
+        distance_matrix,
+        service_times,
+        window_starts,
+        window_ends,
+        demands,
+        capacity,
+        n_vehicles_available,
+        speed_factor,
     )
+    initial_pheromone = 1.0 / (n_nodes * nn_cost) if nn_cost < np.inf else 0.1
+    pheromone = (
+        np.ones((n_nodes, n_nodes), dtype=np.float64) * initial_pheromone
+    )
+
+    min_pheromone = initial_pheromone * 0.01
+    max_pheromone = initial_pheromone * 100.0
+
+    # Best solution tracking
+    best_routes_flat = np.zeros(n_nodes * n_vehicles_available, dtype=np.int32)
+    best_route_lengths = np.zeros(n_vehicles_available, dtype=np.int32)
+    best_n_routes = 0
+    best_cost = float(np.inf)
+    best_distance = float(np.inf)
+
+    # Pre-generate random values for all iterations
+    np.random.seed(42)
+    random_values = np.random.random(n_ants * n_iterations * n_nodes * 2)
+
+    if verbose:
+        print(f"Starting ACO with {n_ants} ants, {n_iterations} iterations")
+        print(f"Initial pheromone: {initial_pheromone:.6f}")
+
+    for iteration in range(n_iterations):
+        # Construct solutions for all ants in parallel
+        (
+            all_routes_flat,
+            all_route_lengths,
+            all_n_routes,
+            all_costs,
+            all_success,
+        ) = construct_all_ant_solutions(
+            n_ants,
+            distance_matrix,
+            service_times,
+            window_starts,
+            window_ends,
+            demands,
+            capacity,
+            n_vehicles_available,
+            pheromone,
+            eta,
+            alpha,
+            beta,
+            q0,
+            speed_factor,
+            random_values[iteration * n_ants * 100 :],
+        )
+
+        # Find best solution in this iteration
+        iteration_best_idx = np.argmin(all_costs)
+        iteration_best_cost = all_costs[iteration_best_idx]
+
+        # Update global best
+        if iteration_best_cost < best_cost:
+            best_routes_flat = all_routes_flat[iteration_best_idx].copy()
+            best_route_lengths = all_route_lengths[iteration_best_idx].copy()
+            best_n_routes = all_n_routes[iteration_best_idx]
+            best_cost = iteration_best_cost
+
+            # Calculate actual distance
+            best_distance = 0.0
+            flat_idx = 0
+            for r in range(best_n_routes):
+                route_len = best_route_lengths[r]
+                for i in range(route_len - 1):
+                    from_node = best_routes_flat[flat_idx + i]
+                    to_node = best_routes_flat[flat_idx + i + 1]
+                    best_distance += distance_matrix[from_node, to_node]
+                flat_idx += route_len
+
+            if verbose:
+                print(
+                    f"Iteration {iteration}: New best - {best_n_routes} vehicles, {best_distance:.2f} distance"
+                )
+
+        # Update pheromones with best solution
+        update_pheromones(
+            pheromone,
+            best_routes_flat,
+            best_route_lengths,
+            best_n_routes,
+            best_cost,
+            rho,
+            min_pheromone,
+            max_pheromone,
+        )
+
+        if verbose and iteration % 10 == 0 and iteration > 0:
+            n_feasible = np.sum(all_success)
+            print(
+                f"Iteration {iteration}: {n_feasible}/{n_ants} ants found feasible solutions"
+            )
+
+    # Convert best solution to list of numpy arrays
+    if best_cost == float(np.inf) or best_n_routes == 0:
+        if verbose:
+            print("No feasible solution found!")
+        return [], 0, float(np.inf)
+
+    routes = []
+    flat_idx = 0
+    for r in range(best_n_routes):
+        route_len = best_route_lengths[r]
+        route = best_routes_flat[flat_idx : flat_idx + route_len]
+        routes.append(np.array(route, dtype=np.int64))
+        flat_idx += route_len
+
+    if verbose:
+        print(
+            f"\nFinal solution: {best_n_routes} vehicles, {best_distance:.2f} distance"
+        )
+
+    return routes, int(best_n_routes), float(best_distance)
 
 
 if __name__ == "__main__":
@@ -407,9 +749,14 @@ if __name__ == "__main__":
         demands=data["demands"],
         capacity=float(data["capacity"]),
         n_vehicles_available=data["n_vehicles"],
-        n_ants=10,
+        n_ants=20,
         n_iterations=100,
+        alpha=1.0,
+        beta=2.0,
+        rho=0.1,
         verbose=True,
     )
 
     print(f"\nResult: {n_veh} vehicles, {dist:.2f} distance")
+    for i, route in enumerate(routes):
+        print(f"Route {i+1}: {route}")
