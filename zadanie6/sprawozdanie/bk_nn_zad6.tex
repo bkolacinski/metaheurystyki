@@ -601,9 +601,9 @@ python run_multiple_and_visualize.py rc208.txt --no-local-search
             \toprule
             \textbf{Instancja} & \textbf{Pojazdy} & \textbf{Dystans} & \textbf{Parametry} \\
             \midrule
-            C107 & 12 & 942.52 & $\alpha$=0.5, $\beta$=3.0, $\rho$=0.05, $q_0$=0.75 \\
-            R106 & 18 & 1431.07 & $\alpha$=0.5, $\beta$=3.5, $\rho$=0.25, $q_0$=0.7 \\
-            RC208 & 3 & 983.41 & $\alpha$=0.5, $\beta$=3.5, $\rho$=0.3, $q_0$=0.75 \\
+            C107 & 11 & 871.25 & $\alpha$=0.5, $\beta$=5.0, $\rho$=0.2, $q_0$=0.85 \\
+            R106 & 17 & 1438.65 & $\alpha$=0.5, $\beta$=3.0, $\rho$=0.3, $q_0$=0.75 \\
+            RC208 & 3 & 978.47 & $\alpha$=0.5, $\beta$=4.5, $\rho$=0.3, $q_0$=0.85 \\
             \bottomrule
         \end{tabular}
     \end{center}
@@ -611,10 +611,10 @@ python run_multiple_and_visualize.py rc208.txt --no-local-search
     \textbf{Obserwacje:}
     \begin{itemize}
         \item Dla wszystkich instancji optymalny $\alpha = 0.5$, co sugeruje mniejszy wpływ feromonów na rzecz heurystyki
-        \item Wartości $\beta$ w zakresie 3.0--3.5 okazały się optymalne
+        \item Wartości $\beta$ w zakresie 3.0--5.0 okazały się optymalne, przy czym dla klastrowych instancji (C107) wyższe wartości dają lepsze wyniki
         \item Instancja RC208 osiągnęła optymalną liczbę pojazdów (3)
-        \item Dla instancji R106 wymagane jest niższe $q_0$ (0.7) --- większa eksploracja dla trudnych instancji
-        \item Dłuższe czasy wykonania wynikają z uruchamiania wszystkich testów równolegle, co redukuje prędkość programu
+        \item Dla instancji C107 osiągnięto wynik z 11 pojazdami --- tylko 1 więcej niż optimum BKS (10)
+        \item Dla instancji R106 najlepsza konfiguracja ($q_0$=0.75) zapewnia dobrą równowagę eksploatacji i eksploracji
     \end{itemize}
 
     \subsection{Statystyki z wielokrotnych uruchomień}
@@ -629,32 +629,43 @@ python run_multiple_and_visualize.py rc208.txt --no-local-search
             & \multicolumn{4}{c|}{\textbf{Liczba pojazdów}} & \multicolumn{4}{c}{\textbf{Dystans}} \\
             \textbf{Instancja} & Min & Max & Śr. & Std & Min & Max & Śr. & Std \\
             \midrule
-            C107 & 12 & 15 & 13.12 & 0.72 & 942.52 & 1293.87 & 1089.93 & 89.46 \\
-            R106 & 18 & 23 & 19.92 & 1.18 & 1411.63 & 1670.82 & 1533.12 & 51.31 \\
-            RC208 & 3 & 4 & 3.98 & 0.14 & 927.35 & 1076.10 & 999.94 & 38.34 \\
+            C107 & 11 & 14 & 12.42 & 0.81 & 871.25 & 1207.64 & 1045.41 & 84.32 \\
+            R106 & 17 & 21 & 18.76 & 1.02 & 1438.65 & 1689.85 & 1557.31 & 55.97 \\
+            RC208 & 3 & 4 & 3.98 & 0.14 & 978.47 & 1081.96 & 986.37 & 42.03 \\
             \bottomrule
         \end{tabular}
     \end{center}
 
     \subsubsection{Instancja C107 (klastrowa)}
 
-    Parametry: $\alpha$=0.5, $\beta$=3.0, $\rho$=0.05, $q_0$=0.75
+    Parametry: $\alpha$=0.5, $\beta$=5.0, $\rho$=0.2, $q_0$=0.85
 
     \begin{itemize}
-        \item Algorytm wykazuje dużą stabilność --- odchylenie standardowe dystansu to tylko 8.2\% średniej
-        \item Najlepszy wynik (942.52) osiągnięto z 13 pojazdami, najlepszy pod względem pojazdów to 12 z dystansem 955.72
-        \item Rozkład pojazdów: 12 (16\%), 13 (54\%), 14 (26\%), 15 (4\%)
+        \item Algorytm wykazuje dużą stabilność --- odchylenie standardowe dystansu to tylko 8.1\% średniej
+        \item Najlepszy wynik (871.25) osiągnięto z 11 pojazdami --- tylko 1 pojazd więcej niż optymalne BKS (10)
+        \item Rozkład pojazdów: 11 (10\%), 12 (54\%), 13 (28\%), 14 (8\%)
+    \end{itemize}
+
+    \subsubsection{Instancja R106 (losowa)}
+
+    Parametry: $\alpha$=0.5, $\beta$=3.0, $\rho$=0.3, $q_0$=0.75
+
+    \begin{itemize}
+        \item Instancja najtrudniejsza --- rozproszone rozmieszczenie klientów utrudnia optymalizację
+        \item Najlepszy wynik: 17 pojazdów, dystans 1438.65 (uruchomienie 13)
+        \item Rozkład pojazdów: 17 (6\%), 18 (32\%), 19 (44\%), 20 (12\%), 21 (6\%)
+        \item Odchylenie standardowe dystansu 3.6\% średniej
     \end{itemize}
 
     \subsubsection{Instancja RC208 (mieszana)}
 
-    Parametry: $\alpha$=0.5, $\beta$=3.5, $\rho$=0.3, $q_0$=0.75
+    Parametry: $\alpha$=0.5, $\beta$=4.5, $\rho$=0.3, $q_0$=0.85
 
     \begin{itemize}
         \item Szerokie okna czasowe umożliwiają znaczną redukcję liczby pojazdów
-        \item Najlepszy wynik: 3 pojazdy, dystans 983.41 (uruchomienie 41) --- \textbf{optymalna liczba pojazdów}
+        \item Najlepszy wynik: 3 pojazdy, dystans 978.47 (uruchomienie 31) --- \textbf{optymalna liczba pojazdów}
         \item Rozkład pojazdów: 3 (2\%), 4 (98\%) --- bardzo stabilna liczba pojazdów
-        \item Najniższe odchylenie standardowe dystansu (3.8\% średniej)
+        \item Najniższe odchylenie standardowe dystansu (4.3\% średniej)
     \end{itemize}
 
     \subsubsection{Wyniki strojenia parametrów}
@@ -666,9 +677,9 @@ python run_multiple_and_visualize.py rc208.txt --no-local-search
             \toprule
             \textbf{Instancja} & \textbf{Min poj.} & \textbf{Max poj.} & \textbf{Śr. poj.} & \textbf{Min dyst.} & \textbf{Czas tuningu} \\
             \midrule
-            C107 & 11 & 17 & 13.30 & 972.46 & 3.1h \\
-            R106 & 18 & 23 & 20.89 & 1619.17 & 3.1h \\
-            RC208 & 3 & 4 & 3.73 & 1010.71 & 3.9h \\
+            C107 & 11 & 16 & 13.36 & 987.94 & 1.6h \\
+            R106 & 17 & 23 & 20.66 & 1667.90 & 1.6h \\
+            RC208 & 3 & 4 & 3.99 & 1031.98 & 1.9h \\
             \bottomrule
         \end{tabular}
     \end{center}
@@ -684,11 +695,11 @@ python run_multiple_and_visualize.py rc208.txt --no-local-search
             \toprule
             $\alpha$ & Min pojazdy & Śr. pojazdy & Min dystans & Śr. dystans \\
             \midrule
-            0.5 & 11 & 12.59 & 972.46 & 1229.68 \\
-            1.0 & 11 & 13.19 & 1037.43 & 1383.02 \\
-            1.5 & 12 & 13.54 & 1112.87 & 1479.90 \\
-            2.0 & 11 & 13.51 & 1173.75 & 1499.48 \\
-            2.5 & 12 & 13.65 & 1263.79 & 1532.17 \\
+            0.5 & 11 & 12.49 & 987.94 & 1225.17 \\
+            1.0 & 11 & 13.34 & 1081.83 & 1402.52 \\
+            1.5 & 12 & 13.63 & 1210.21 & 1500.42 \\
+            2.0 & 12 & 13.69 & 1232.54 & 1522.65 \\
+            2.5 & 12 & 13.65 & 1244.96 & 1520.42 \\
             \bottomrule
         \end{tabular}
     \end{center}
@@ -702,17 +713,17 @@ python run_multiple_and_visualize.py rc208.txt --no-local-search
             \toprule
             $\beta$ & Min pojazdy & Śr. pojazdy & Min dystans & Śr. dystans \\
             \midrule
-            2.5 & 11 & 13.41 & 1043.87 & 1484.32 \\
-            3.0 & 11 & 13.41 & 972.46 & 1464.93 \\
-            3.5 & 12 & 13.38 & 1013.10 & 1449.18 \\
-            4.0 & 11 & 13.21 & 1022.80 & 1402.53 \\
-            4.5 & 11 & 13.20 & 1029.09 & 1384.53 \\
-            5.0 & 11 & 13.18 & 1092.23 & 1363.61 \\
+            2.5 & 12 & 13.50 & 1071.09 & 1484.57 \\
+            3.0 & 11 & 13.43 & 1040.65 & 1462.65 \\
+            3.5 & 11 & 13.44 & 1034.74 & 1441.33 \\
+            4.0 & 12 & 13.24 & 987.94 & 1420.82 \\
+            4.5 & 11 & 13.25 & 1091.47 & 1409.59 \\
+            5.0 & 11 & 13.30 & 1020.71 & 1386.44 \\
             \bottomrule
         \end{tabular}
     \end{center}
 
-    \textbf{Wniosek:} Wartości $\beta$ w zakresie 3.0--4.0 dają najlepsze minimalne wyniki. Wyższe $\beta$ poprawia średnią, ale niekoniecznie minimum.
+    \textbf{Wniosek:} Wartości $\beta$ w zakresie 3.5--5.0 dają najlepsze wyniki. Wyższe $\beta$ poprawia średnią i prowadzi do stabilniejszych rozwiązań.
 
     \subsubsection{Wpływ współczynnika $\rho$}
 
@@ -721,16 +732,16 @@ python run_multiple_and_visualize.py rc208.txt --no-local-search
             \toprule
             $\rho$ & Min pojazdy & Śr. pojazdy & Min dystans & Śr. dystans \\
             \midrule
-            0.05 & 11 & 13.39 & 972.46 & 1430.02 \\
-            0.10 & 11 & 13.42 & 1036.87 & 1439.22 \\
-            0.15 & 11 & 13.31 & 1022.80 & 1425.59 \\
-            0.20 & 11 & 13.23 & 1013.10 & 1420.64 \\
-            0.25 & 11 & 13.13 & 1043.87 & 1408.79 \\
+            0.05 & 12 & 13.50 & 1130.05 & 1456.62 \\
+            0.10 & 12 & 13.49 & 987.94 & 1435.38 \\
+            0.15 & 11 & 13.29 & 1028.27 & 1423.18 \\
+            0.20 & 11 & 13.29 & 1020.71 & 1427.31 \\
+            0.25 & 11 & 13.23 & 1073.13 & 1428.68 \\
             \bottomrule
         \end{tabular}
     \end{center}
 
-    \textbf{Wniosek:} Niskie wartości $\rho$ (0.05) pozwalają na lepszą eksploatację znalezionych dobrych ścieżek. Powolne wyparowywanie feromonów stabilizuje poszukiwania.
+    \textbf{Wniosek:} Wartości $\rho$ w zakresie 0.10--0.20 dają najlepsze wyniki. Umiarkowane wyparowywanie feromonów zapewnia dobrą równowagę między eksploracją a eksploatacją.
 
     \subsubsection{Wpływ progu eksploatacji $q_0$}
 
@@ -739,16 +750,16 @@ python run_multiple_and_visualize.py rc208.txt --no-local-search
             \toprule
             $q_0$ & Min pojazdy & Śr. pojazdy & Min dystans & Śr. dystans \\
             \midrule
-            0.75 & 11 & 12.58 & 972.46 & 1350.11 \\
-            0.80 & 11 & 12.79 & 1024.44 & 1358.44 \\
-            0.85 & 12 & 13.18 & 1029.09 & 1411.31 \\
-            0.90 & 12 & 13.63 & 1095.76 & 1459.61 \\
-            0.95 & 12 & 14.31 & 1013.10 & 1544.78 \\
+            0.75 & 11 & 12.62 & 1040.65 & 1350.13 \\
+            0.80 & 11 & 12.95 & 1083.05 & 1398.26 \\
+            0.85 & 11 & 13.25 & 1020.71 & 1411.38 \\
+            0.90 & 11 & 13.63 & 987.94 & 1465.74 \\
+            0.95 & 12 & 14.35 & 1170.24 & 1545.67 \\
             \bottomrule
         \end{tabular}
     \end{center}
 
-    \textbf{Wniosek:} Umiarkowane wartości $q_0$ (0.75--0.80) dają najlepsze wyniki. Zbyt wysoka eksploatacja ($q_0 > 0.9$) prowadzi do przedwczesnej zbieżności.
+    \textbf{Wniosek:} Wartości $q_0$ w zakresie 0.80--0.90 dają najlepsze wyniki pod względem minimalnego dystansu. Zbyt wysoka eksploatacja ($q_0 > 0.9$) prowadzi do przedwczesnej zbieżności, natomiast zbyt niska zwiększa średnią liczbę pojazdów.
 
     \subsubsection{Wykresy wpływu parametrów}
 
@@ -758,26 +769,26 @@ python run_multiple_and_visualize.py rc208.txt --no-local-search
 
     \begin{figure}[H]
         \centering
-        \includegraphics[width=0.75\textwidth]{../analysis/tuning_results_c107_20260129_163846_param_alpha.png}
+        \includegraphics[width=0.75\textwidth]{../analysis/tuning_results_c107_20260129_204012_param_alpha.png}
         \caption{C107: Wpływ parametru $\alpha$ --- niższe wartości dają lepsze wyniki}
     \end{figure}
 
     \begin{figure}[H]
         \centering
-        \includegraphics[width=0.75\textwidth]{../analysis/tuning_results_c107_20260129_163846_param_beta.png}
-        \caption{C107: Wpływ parametru $\beta$ --- optymalne wartości w zakresie 3.0--4.0}
+        \includegraphics[width=0.75\textwidth]{../analysis/tuning_results_c107_20260129_204012_param_beta.png}
+        \caption{C107: Wpływ parametru $\beta$ --- optymalne wartości w zakresie 3.5--5.0}
     \end{figure}
 
     \begin{figure}[H]
         \centering
-        \includegraphics[width=0.75\textwidth]{../analysis/tuning_results_c107_20260129_163846_param_rho.png}
-        \caption{C107: Wpływ parametru $\rho$ --- niskie wartości stabilizują poszukiwania}
+        \includegraphics[width=0.75\textwidth]{../analysis/tuning_results_c107_20260129_204012_param_rho.png}
+        \caption{C107: Wpływ parametru $\rho$ --- umiarkowane wartości stabilizują poszukiwania}
     \end{figure}
 
     \begin{figure}[H]
         \centering
-        \includegraphics[width=0.75\textwidth]{../analysis/tuning_results_c107_20260129_163846_param_q0.png}
-        \caption{C107: Wpływ parametru $q_0$ --- umiarkowane wartości zapewniają lepszą eksplorację}
+        \includegraphics[width=0.75\textwidth]{../analysis/tuning_results_c107_20260129_204012_param_q0.png}
+        \caption{C107: Wpływ parametru $q_0$ --- wartości 0.80--0.90 zapewniają lepszą eksplorację}
     \end{figure}
 
     \newpage
@@ -786,26 +797,26 @@ python run_multiple_and_visualize.py rc208.txt --no-local-search
 
     \begin{figure}[H]
         \centering
-        \includegraphics[width=0.75\textwidth]{../analysis/tuning_results_r106_20260129_165031_param_alpha.png}
+        \includegraphics[width=0.75\textwidth]{../analysis/tuning_results_r106_20260129_204416_param_alpha.png}
         \caption{R106: Wpływ parametru $\alpha$ --- podobnie jak dla C107, niższe wartości są lepsze}
     \end{figure}
 
     \begin{figure}[H]
         \centering
-        \includegraphics[width=0.75\textwidth]{../analysis/tuning_results_r106_20260129_165031_param_beta.png}
-        \caption{R106: Wpływ parametru $\beta$ --- optymalne wartości 3.0--3.5}
+        \includegraphics[width=0.75\textwidth]{../analysis/tuning_results_r106_20260129_204416_param_beta.png}
+        \caption{R106: Wpływ parametru $\beta$ --- optymalne wartości 3.0--4.5}
     \end{figure}
 
     \begin{figure}[H]
         \centering
-        \includegraphics[width=0.75\textwidth]{../analysis/tuning_results_r106_20260129_165031_param_rho.png}
-        \caption{R106: Wpływ parametru $\rho$ --- dla instancji losowej wyższe $\rho$ (0.25) daje lepsze wyniki}
+        \includegraphics[width=0.75\textwidth]{../analysis/tuning_results_r106_20260129_204416_param_rho.png}
+        \caption{R106: Wpływ parametru $\rho$ --- dla instancji losowej wyższe $\rho$ (0.25--0.30) daje lepsze wyniki}
     \end{figure}
 
     \begin{figure}[H]
         \centering
-        \includegraphics[width=0.75\textwidth]{../analysis/tuning_results_r106_20260129_165031_param_q0.png}
-        \caption{R106: Wpływ parametru $q_0$ --- niższe wartości (0.7) są kluczowe dla trudnych instancji}
+        \includegraphics[width=0.75\textwidth]{../analysis/tuning_results_r106_20260129_204416_param_q0.png}
+        \caption{R106: Wpływ parametru $q_0$ --- niższe wartości (0.70--0.75) są kluczowe dla trudnych instancji}
     \end{figure}
 
     \newpage
@@ -814,26 +825,26 @@ python run_multiple_and_visualize.py rc208.txt --no-local-search
 
     \begin{figure}[H]
         \centering
-        \includegraphics[width=0.75\textwidth]{../analysis/tuning_results_rc208_20260129_170439_param_alpha.png}
+        \includegraphics[width=0.75\textwidth]{../analysis/tuning_results_rc208_20260129_204858_param_alpha.png}
         \caption{RC208: Wpływ parametru $\alpha$ --- niskie wartości optymalne podobnie jak dla innych instancji}
     \end{figure}
 
     \begin{figure}[H]
         \centering
-        \includegraphics[width=0.75\textwidth]{../analysis/tuning_results_rc208_20260129_170439_param_beta.png}
-        \caption{RC208: Wpływ parametru $\beta$ --- optymalne wartości 3.0--3.5}
+        \includegraphics[width=0.75\textwidth]{../analysis/tuning_results_rc208_20260129_204858_param_beta.png}
+        \caption{RC208: Wpływ parametru $\beta$ --- optymalne wartości 4.5--5.5}
     \end{figure}
 
     \begin{figure}[H]
         \centering
-        \includegraphics[width=0.75\textwidth]{../analysis/tuning_results_rc208_20260129_170439_param_rho.png}
-        \caption{RC208: Wpływ parametru $\rho$ --- wyższe wartości (0.25--0.3) lepsze dla instancji mieszanych}
+        \includegraphics[width=0.75\textwidth]{../analysis/tuning_results_rc208_20260129_204858_param_rho.png}
+        \caption{RC208: Wpływ parametru $\rho$ --- wartości 0.10--0.30 dają podobne wyniki}
     \end{figure}
 
     \begin{figure}[H]
         \centering
-        \includegraphics[width=0.75\textwidth]{../analysis/tuning_results_rc208_20260129_170439_param_q0.png}
-        \caption{RC208: Wpływ parametru $q_0$ --- umiarkowane wartości (0.75) zapewniają dobrą równowagę}
+        \includegraphics[width=0.75\textwidth]{../analysis/tuning_results_rc208_20260129_204858_param_q0.png}
+        \caption{RC208: Wpływ parametru $q_0$ --- wartości 0.75--0.85 zapewniają dobrą równowagę}
     \end{figure}
 
     \subsection{Wizualizacje tras}
@@ -842,20 +853,20 @@ python run_multiple_and_visualize.py rc208.txt --no-local-search
 
     \begin{figure}[H]
         \centering
-        \includegraphics[width=0.85\textwidth]{../analysis/c107_best_solution_20260129_185927.png}
-        \caption{Najlepsza znaleziona trasa dla instancji C107 (12 pojazdów, dystans: 955.72)}
+        \includegraphics[width=0.85\textwidth]{../analysis/c107_best_solution_20260129_205509.png}
+        \caption{Najlepsza znaleziona trasa dla instancji C107 (11 pojazdów, dystans: 871.25)}
     \end{figure}
 
     \begin{figure}[H]
         \centering
-        \includegraphics[width=0.85\textwidth]{../analysis/c107_avg_solution_20260129_185930.png}
+        \includegraphics[width=0.85\textwidth]{../analysis/c107_avg_solution_20260129_205511.png}
         \caption{Średnie rozwiązanie dla instancji C107 --- widoczne typowe grupowanie klientów w klastry}
     \end{figure}
 
     \begin{figure}[H]
         \centering
-        \includegraphics[width=0.85\textwidth]{../analysis/c107_worst_solution_20260129_185929.png}
-        \caption{Najgorsze rozwiązanie dla instancji C107 (15 pojazdów, dystans: 1293.87)}
+        \includegraphics[width=0.85\textwidth]{../analysis/c107_worst_solution_20260129_205510.png}
+        \caption{Najgorsze rozwiązanie dla instancji C107 (13 pojazdów, dystans: 1207.64)}
     \end{figure}
 
     \newpage
@@ -864,20 +875,20 @@ python run_multiple_and_visualize.py rc208.txt --no-local-search
 
     \begin{figure}[H]
         \centering
-        \includegraphics[width=0.85\textwidth]{../analysis/r106_best_solution_20260129_193635.png}
-        \caption{Najlepsza znaleziona trasa dla instancji R106 (18 pojazdów, dystans: 1431.07)}
+        \includegraphics[width=0.85\textwidth]{../analysis/r106_best_solution_20260129_205630.png}
+        \caption{Najlepsza znaleziona trasa dla instancji R106 (17 pojazdów, dystans: 1438.65)}
     \end{figure}
 
     \begin{figure}[H]
         \centering
-        \includegraphics[width=0.85\textwidth]{../analysis/r106_avg_solution_20260129_193637.png}
+        \includegraphics[width=0.85\textwidth]{../analysis/r106_avg_solution_20260129_205632.png}
         \caption{Średnie rozwiązanie dla instancji R106 --- widoczne rozproszone rozmieszczenie klientów}
     \end{figure}
 
     \begin{figure}[H]
         \centering
-        \includegraphics[width=0.85\textwidth]{../analysis/r106_worst_solution_20260129_193636.png}
-        \caption{Najgorsze rozwiązanie dla instancji R106 (23 pojazdy, dystans: 1670.82)}
+        \includegraphics[width=0.85\textwidth]{../analysis/r106_worst_solution_20260129_205631.png}
+        \caption{Najgorsze rozwiązanie dla instancji R106 (21 pojazdów, dystans: 1689.85)}
     \end{figure}
 
     \newpage
@@ -886,20 +897,20 @@ python run_multiple_and_visualize.py rc208.txt --no-local-search
 
     \begin{figure}[H]
         \centering
-        \includegraphics[width=0.85\textwidth]{../analysis/rc208_best_solution_20260129_193940.png}
-        \caption{Najlepsza znaleziona trasa dla instancji RC208 (3 pojazdy, dystans: 983.41) --- optymalna liczba pojazdów}
+        \includegraphics[width=0.85\textwidth]{../analysis/rc208_best_solution_20260129_205750.png}
+        \caption{Najlepsza znaleziona trasa dla instancji RC208 (3 pojazdy, dystans: 978.47) --- optymalna liczba pojazdów}
     \end{figure}
 
     \begin{figure}[H]
         \centering
-        \includegraphics[width=0.85\textwidth]{../analysis/rc208_avg_solution_20260129_193941.png}
+        \includegraphics[width=0.85\textwidth]{../analysis/rc208_avg_solution_20260129_205752.png}
         \caption{Średnie rozwiązanie dla instancji RC208 --- mieszanka klastrów i rozmieszczenia losowego}
     \end{figure}
 
     \begin{figure}[H]
         \centering
-        \includegraphics[width=0.85\textwidth]{../analysis/rc208_worst_solution_20260129_193941.png}
-        \caption{Najgorsze rozwiązanie dla instancji RC208 (4 pojazdy, dystans: 1076.10)}
+        \includegraphics[width=0.85\textwidth]{../analysis/rc208_worst_solution_20260129_205751.png}
+        \caption{Najgorsze rozwiązanie dla instancji RC208 (4 pojazdy, dystans: 1081.96)}
     \end{figure}
 
     \subsection{Analiza zbieżności i stabilności}
@@ -911,10 +922,10 @@ python run_multiple_and_visualize.py rc208.txt --no-local-search
             \toprule
             \textbf{Metryka} & \textbf{C107} & \textbf{R106} & \textbf{RC208} \\
             \midrule
-            Odch. std. dystansu / średnia & 8.2\% & 3.3\% & 3.8\% \\
-            Dominujący wynik (pojazdy) & 13 (54\%) & 19--20 (58\%) & 4 (98\%) \\
-            Zakres pojazdów & 12--15 & 18--23 & 3--4 \\
-            Średni czas uruchomienia & 0.86s & 0.59s & 1.09s \\
+            Odch. std. dystansu / średnia & 8.1\% & 3.6\% & 4.3\% \\
+            Dominujący wynik (pojazdy) & 12 (54\%) & 18--19 (76\%) & 4 (98\%) \\
+            Zakres pojazdów & 11--14 & 17--21 & 3--4 \\
+            Średni czas uruchomienia & 0.66s & 0.55s & 1.01s \\
             \bottomrule
         \end{tabular}
     \end{center}
@@ -923,7 +934,7 @@ python run_multiple_and_visualize.py rc208.txt --no-local-search
     \begin{itemize}
         \item Algorytm wykazuje wysoką stabilność dla wszystkich instancji (odch. std. $<$10\% średniej)
         \item RC208 jest najbardziej stabilna --- 98\% uruchomień daje 4 pojazdy
-        \item R106 ma największy rozrzut liczby pojazdów (18--23), co wynika z trudności instancji
+        \item R106 ma największy rozrzut liczby pojazdów (17--21), co wynika z trudności instancji losowej
         \item Szybka zbieżność do dobrego rozwiązania (pierwsze 20--30 iteracji ACO)
         \item Optymalizacja lokalna (Relocate + 3-opt) znacząco poprawia jakość końcową
     \end{itemize}
@@ -943,18 +954,18 @@ python run_multiple_and_visualize.py rc208.txt --no-local-search
             \cmidrule(lr){2-3} \cmidrule(lr){4-5}
             & Pojazdy & Dystans & Pojazdy & Dystans & \\
             \midrule
-            C107 & 10 & 828.94 & 12 & 942.52 & +13.7\% \\
-            R106 & 12 & 1234.6 & 18 & 1431.07 & +15.9\% \\
-            RC208 & 3 & 828.14 & 3 & 983.41 & +18.8\% \\
+            C107 & 10 & 828.94 & 11 & 871.25 & +5.1\% \\
+            R106 & 12 & 1234.6 & 17 & 1438.65 & +16.5\% \\
+            RC208 & 3 & 828.14 & 3 & 978.47 & +18.2\% \\
             \bottomrule
         \end{tabular}
     \end{center}
 
     \textbf{Interpretacja:}
     \begin{itemize}
-        \item \textbf{RC208:} Osiągnięto optymalną liczbę pojazdów (3), gap dystansowy +18.8\%
-        \item \textbf{C107:} Gap dystansowy +13.7\% przy 2 dodatkowych pojazdach
-        \item \textbf{R106:} Instancja najtrudniejsza --- +50\% pojazdów względem BKS, ale gap dystansowy tylko +15.9\%
+        \item \textbf{RC208:} Osiągnięto optymalną liczbę pojazdów (3), gap dystansowy +18.2\%
+        \item \textbf{C107:} Gap dystansowy tylko +5.1\% przy 1 dodatkowym pojeździe --- bardzo bliski wynik do optimum
+        \item \textbf{R106:} Instancja najtrudniejsza --- +42\% pojazdów względem BKS, gap dystansowy +16.5\%
     \end{itemize}
 
     \textbf{Wnioski:}
@@ -984,21 +995,21 @@ python run_multiple_and_visualize.py rc208.txt --no-local-search
 
         \item \textbf{Parametr $\beta$ (wpływ heurystyki):}
         \begin{itemize}
-            \item Optymalne wartości w zakresie 3.0--4.0
+            \item Optymalne wartości w zakresie 3.5--5.0
             \item Wyższa wartość preferuje bliższych klientów i węższe okna czasowe
-            \item Zbyt wysokie $\beta$ może pomijać dobre rozwiązania z dłuższymi skokami
+            \item Wartości poniżej 3.0 dają słabsze wyniki
         \end{itemize}
 
         \item \textbf{Parametr $\rho$ (wyparowywanie):}
         \begin{itemize}
-            \item Niskie wartości (0.05--0.15) stabilizują poszukiwania
-            \item Wysokie $\rho$ powoduje zbyt szybkie zapominanie dobrych ścieżek
+            \item Wartości w zakresie 0.10--0.25 dają najlepsze wyniki
+            \item Zbyt niskie $\rho$ może prowadzić do stagnacji, zbyt wysokie do niestabilności
         \end{itemize}
 
         \item \textbf{Parametr $q_0$ (eksploatacja):}
         \begin{itemize}
-            \item Optymalne w zakresie 0.70--0.80
-            \item Zbyt wysoka wartość ($>$0.9) ogranicza eksplorację
+            \item Optymalne w zakresie 0.80--0.90
+            \item Zbyt wysoka wartość ($>$0.9) ogranicza eksplorację i prowadzi do gorszych średnich wyników
         \end{itemize}
     \end{enumerate}
 
@@ -1007,9 +1018,9 @@ python run_multiple_and_visualize.py rc208.txt --no-local-search
     Analiza 50 uruchomień dla każdej instancji wykazała wysoką stabilność algorytmu:
 
     \begin{itemize}
-        \item \textbf{C107:} Odch. std. dystansu 8.2\% średniej, 54\% uruchomień dało 13 pojazdów
-        \item \textbf{R106:} Odch. std. dystansu 3.3\% średniej, 58\% uruchomień dało 19--20 pojazdów
-        \item \textbf{RC208:} Odch. std. dystansu 3.8\% średniej, 98\% uruchomień dało 4 pojazdy
+        \item \textbf{C107:} Odch. std. dystansu 8.1\% średniej, 54\% uruchomień dało 12 pojazdów
+        \item \textbf{R106:} Odch. std. dystansu 3.6\% średniej, 76\% uruchomień dało 18--19 pojazdów
+        \item \textbf{RC208:} Odch. std. dystansu 4.3\% średniej, 98\% uruchomień dało 4 pojazdy
     \end{itemize}
 
     Algorytm jest stabilny dla wszystkich typów instancji --- większość uruchomień daje podobne wyniki, co świadczy o dobrej zbieżności i powtarzalności.
@@ -1017,9 +1028,9 @@ python run_multiple_and_visualize.py rc208.txt --no-local-search
     \subsection{Trudność instancji}
 
     \begin{itemize}
-        \item \textbf{Grupa R (losowe):} Najtrudniejsza --- rozproszone rozmieszczenie klientów utrudnia optymalizację. Dla R106 nie udało się osiągnąć optymalnej liczby pojazdów (12 vs 18).
+        \item \textbf{Grupa R (losowe):} Najtrudniejsza --- rozproszone rozmieszczenie klientów utrudnia optymalizację. Dla R106 nie udało się osiągnąć optymalnej liczby pojazdów (12 vs 17).
 
-        \item \textbf{Grupa C (klastrowe):} Umiarkowana trudność --- klienci w skupiskach ułatwiają tworzenie efektywnych tras. Dla C107 osiągnięto wynik bliski optymalnemu (+1 pojazd).
+        \item \textbf{Grupa C (klastrowe):} Umiarkowana trudność --- klienci w skupiskach ułatwiają tworzenie efektywnych tras. Dla C107 osiągnięto wynik bliski optymalnemu (11 pojazdów vs 10 optymalnych).
 
         \item \textbf{Grupa RC (mieszane):} Szersze okna czasowe (typ 2) znacząco ułatwiają optymalizację. Dla RC208 osiągnięto optymalną liczbę pojazdów (3).
     \end{itemize}
@@ -1044,13 +1055,13 @@ python run_multiple_and_visualize.py rc208.txt --no-local-search
     Na podstawie przeprowadzonych eksperymentów (750 konfiguracji parametrów, 50 uruchomień dla najlepszej konfiguracji) sformułowano następujące wnioski:
 
     \begin{itemize}
-        \item \textbf{Skuteczność podejścia hybrydowego:} Połączenie ACO z operatorami Relocate i 3-opt pozwala osiągnąć wyniki bliskie najlepszym znanym rozwiązaniom. Dla instancji RC208 osiągnięto optymalną liczbę pojazdów (3), a dla C107 wynik różni się tylko o 1 pojazd od optymalnego.
+        \item \textbf{Skuteczność podejścia hybrydowego:} Połączenie ACO z operatorami Relocate i 3-opt pozwala osiągnąć wyniki bliskie najlepszym znanym rozwiązaniom. Dla instancji RC208 osiągnięto optymalną liczbę pojazdów (3), a dla C107 wynik różni się tylko o 1 pojazd od optymalnego (11 vs 10) z dystansem tylko 5.1\% gorszym od BKS.
 
-        \item \textbf{Wpływ parametrów:} Kluczowe znaczenie ma dobór parametrów. Niskie $\alpha$ (0.5) i umiarkowane $q_0$ (0.70--0.80) zapewniają lepszą eksplorację. Wartości $\beta$ w zakresie 3.0--3.5 oraz niskie $\rho$ (0.05--0.15) stabilizują poszukiwania.
+        \item \textbf{Wpływ parametrów:} Kluczowe znaczenie ma dobór parametrów. Niskie $\alpha$ (0.5) zapewnia lepszą eksplorację. Wartości $\beta$ w zakresie 3.5--5.0 oraz $q_0$ w zakresie 0.80--0.90 dają najlepsze wyniki dla instancji klastrowych. Wartości $\rho$ w zakresie 0.10--0.25 stabilizują poszukiwania.
 
         \item \textbf{Charakterystyka instancji:} Instancje klastrowe (C) są najłatwiejsze do optymalizacji, a instancje losowe (R) najtrudniejsze. Szersze okna czasowe (typ 2) znacząco ułatwiają redukcję liczby pojazdów.
 
-        \item \textbf{Stabilność:} Algorytm wykazuje dobrą stabilność --- odchylenie standardowe dystansu wynosi ok. 8\% średniej dla wielokrotnych uruchomień.
+        \item \textbf{Stabilność:} Algorytm wykazuje dobrą stabilność --- odchylenie standardowe dystansu wynosi ok. 4--8\% średniej dla wielokrotnych uruchomień.
 
         \item \textbf{Wydajność:} Wykorzystanie biblioteki Numba do kompilacji JIT znacząco przyspiesza obliczenia (średni czas uruchomienia $<$1s po kompilacji), umożliwiając użycie większej liczby mrówek i iteracji.
     \end{itemize}
@@ -1067,9 +1078,9 @@ python run_multiple_and_visualize.py rc208.txt --no-local-search
             Liczba mrówek (n\_ants) & 200 & Dobra eksploracja przestrzeni rozwiązań \\
             Liczba iteracji (n\_iterations) & 100 & Wystarczające do zbieżności \\
             Wpływ feromonów ($\alpha$) & 0.5 & Mniejszy wpływ = lepsza eksploracja \\
-            Wpływ heurystyki ($\beta$) & 3.0--3.5 & Balans między bliskością a jakością \\
-            Wyparowywanie ($\rho$) & 0.05--0.15 & Powolne zapominanie stabilizuje \\
-            Próg eksploatacji ($q_0$) & 0.70--0.80 & Unikanie przedwczesnej zbieżności \\
+            Wpływ heurystyki ($\beta$) & 3.5--5.0 & Balans między bliskością a jakością \\
+            Wyparowywanie ($\rho$) & 0.10--0.25 & Umiarkowane zapominanie stabilizuje \\
+            Próg eksploatacji ($q_0$) & 0.80--0.90 & Dobra równowaga eksploatacji/eksploracji \\
             \bottomrule
         \end{tabular}
     \end{center}
